@@ -19,6 +19,8 @@ import (
 
 type Generator struct{}
 
+func (Generator) RequiresRemotePath() bool { return true }
+
 // RemoteMarker opts into core's publication-marker selection before projection.
 func (Generator) RemoteMarker() string {
 	return "github.com/tylergannon/skgo/plugins/mcp/mcppublish#Tool"
@@ -34,6 +36,9 @@ func (Generator) Generate(ctx context.Context, r templateapi.GenerationRequest) 
 	}
 	if len(r.Model.Remotes) == 0 {
 		return result, fmt.Errorf("MCP needs at least one remote marked with mcppublish.Tool")
+	}
+	if r.RemotePath == "" {
+		return result, fmt.Errorf("MCP requires a host that supplies the configured remote path; upgrade the SKGO host")
 	}
 	s := schemas{r.Model.Definitions}
 	imports := map[string]string{}
@@ -130,7 +135,7 @@ func (Generator) Generate(ctx context.Context, r templateapi.GenerationRequest) 
 			fmt.Fprintf(&commands, "in,err:=DecodeRoot%d(arg);if err!=nil{return nil,fmt.Errorf(\"%%w: %%v\",wirejson.ErrInvalidInput,err)}\n", op.Input)
 		}
 		fmt.Fprintf(&commands, "value,err:=c.%s(ctx%s);if err!=nil{return nil,err};return EncodeRoot%d(value)\n}) }\n", method, argument, op.Output)
-		fmt.Fprintf(&methods, "// %s\nfunc (c *Client) %s(ctx context.Context%s) (%s, error) {\nvar zero %s\n%sraw, err := c.Remote.Call(ctx, %q, %q, input)\nif err != nil { return zero, err }; value, err := DecodeRoot%d(raw); if err != nil { return zero, fmt.Errorf(\"result contract: %%w\", err) }; return value, nil\n}\n", strings.ReplaceAll(op.Description, "\n", "\n// "), method, parameter, outType, outType, encode, op.ID, op.Kind, op.Output)
+		fmt.Fprintf(&methods, "// %s\nfunc (c *Client) %s(ctx context.Context%s) (%s, error) {\nvar zero %s\n%sraw, err := c.Remote.Call(ctx, %q, %q, %q, input)\nif err != nil { return zero, err }; value, err := DecodeRoot%d(raw); if err != nil { return zero, fmt.Errorf(\"result contract: %%w\", err) }; return value, nil\n}\n", strings.ReplaceAll(op.Description, "\n", "\n// "), method, parameter, outType, outType, encode, r.RemotePath, op.ID, op.Kind, op.Output)
 		fmt.Fprintf(&tools, "bridge.Tool(%q, %q, json.RawMessage(%s), json.RawMessage(%s), %t, %t, %t, func(ctx context.Context, arg any)(any,error){\n", op.Name, op.Description, strconv.Quote(string(inputSchema)), strconv.Quote(string(outputSchema)), s.object(input), op.Input < 0, op.Kind == "command")
 		if op.Input >= 0 {
 			fmt.Fprintf(&tools, "in, err := DecodeRoot%d(arg); if err != nil { return nil, fmt.Errorf(\"%%w: %%v\", bridge.ErrInvalidInput, err) }\n", op.Input)

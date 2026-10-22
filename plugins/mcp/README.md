@@ -22,7 +22,8 @@ are sent once and errors do not imply rollback.
 `listTasks` and `addTask` tools share the web page's state. State resets when
 the application exits. Its loopback example has no login. The generated MCP
 entrypoint accepts `SKGO_TOKEN` for applications that already support bearer
-credentials, and `-base`/`-app-dir` for nondefault Kit paths.
+credentials. The application base URL includes any deployment path; the
+generator reads the configured remote endpoint location from Kit.
 
 From `plugins/mcp/example`, with the repository's Go toolchain and VitePlus:
 
@@ -30,10 +31,10 @@ From `plugins/mcp/example`, with the repository's Go toolchain and VitePlus:
 export GOWORK=off
 mkdir -p .local
 go build -buildmode=plugin -o .local/mcp.so github.com/tylergannon/skgo/plugins/mcp
-go run ./cmd/generate -plugin "$PWD/.local/mcp.so"
 cd web
 vp install --frozen-lockfile
 cd ..
+go run ./cmd/generate -plugin "$PWD/.local/mcp.so"
 go tool skgo build --root .
 CGO_ENABLED=0 go build -o .local/task-list ./cmd
 CGO_ENABLED=0 go build -o .local/task-mcp ./cmd/mcp
@@ -41,7 +42,7 @@ CGO_ENABLED=0 go build -o .local/task-mcp ./cmd/mcp
 ```
 
 Open `http://127.0.0.1:8080`. Configure an MCP host to launch the absolute path
-to `.local/task-mcp` with `-origin http://127.0.0.1:8080`. Adding a task from
+to `.local/task-mcp` with `-base-url http://127.0.0.1:8080`. Adding a task from
 either interface makes it available to the other. Refresh the page's list
 after a tool call.
 
@@ -51,7 +52,7 @@ plugin pairing. Released consumers use the existing exact-host installation:
 `skgo plugin install --prebuilt ARTIFACT --sha256 DIGEST`,
 then `skgo generate --plugins` with their normal generation flags. The core
 release must include the `RemoteOperation.Description` field and the
-`MarkedGenerator` contract. Artifacts must be
+`MarkedGenerator` and `RemotePathGenerator` contracts. Artifacts must be
 built for that exact official CLI through `skgo-plugin-build`; this proposal
 does not publish a release artifact.
 
@@ -81,7 +82,7 @@ applies the same add-on to the normal minimal application scaffold.
 
 Maintain `main.go` to configure server name/version, connection flags,
 credentials, headers, your `http.Client`, and additional tools/resources/prompts.
-The skeleton supports `SKGO_ORIGIN`, `SKGO_TOKEN` (bearer) and `SKGO_API_KEY`
+The skeleton supports `SKGO_BASE_URL`, `SKGO_TOKEN` (bearer) and `SKGO_API_KEY`
 (`X-API-Key`). These must match authentication implemented by your application.
 The skeleton is initially inactive (`main.go.tmpl`), keeping normal web builds,
 development and `go mod tidy` working before MCP setup. Add the runtime dependency
@@ -117,7 +118,7 @@ Construct commands with the generated client and assemble them yourself:
 
 ```go
 c := &mcpclient.Client{Remote: remoteclient.Client{
-    Origin: origin,
+    BaseURL: baseURL,
     PrepareRequest: func(r *http.Request) error {
         r.Header.Set("X-API-Key", key)
         return nil

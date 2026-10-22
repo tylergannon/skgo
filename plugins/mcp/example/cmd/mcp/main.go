@@ -17,12 +17,10 @@ import (
 var instructions string
 
 func main() {
-	origin := flag.String("origin", os.Getenv("SKGO_ORIGIN"), "application origin (or SKGO_ORIGIN)")
-	base := flag.String("base", "", "Kit base path")
-	appDir := flag.String("app-dir", "_app", "Kit app directory")
+	baseURL := flag.String("base-url", os.Getenv("SKGO_BASE_URL"), "application base URL (or SKGO_BASE_URL)")
 	flag.Parse()
-	if *origin == "" {
-		log.Fatal("-origin or SKGO_ORIGIN is required")
+	if *baseURL == "" {
+		log.Fatal("-base-url or SKGO_BASE_URL is required")
 	}
 
 	// Configure the application's authentication and HTTP connection here.
@@ -35,7 +33,7 @@ func main() {
 		headers.Set("X-API-Key", key)
 	}
 	c := &client.Client{Remote: remoteclient.Client{
-		Origin: *origin, Base: *base, AppDir: *appDir, Headers: headers,
+		BaseURL: *baseURL, Headers: headers,
 		// Set HTTP to your own *http.Client for application-specific transport.
 	}}
 	s := server.NewMCPServer("TaskList", "dev",

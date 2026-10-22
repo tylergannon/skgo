@@ -38,10 +38,8 @@ func newCommand() *cobra.Command {
 		}
 		return nil
 	}
-	root.PersistentFlags().StringVar(&c.Remote.Origin, "origin", os.Getenv("SKGO_ORIGIN"), "Application origin (or SKGO_ORIGIN)")
+	root.PersistentFlags().StringVar(&c.Remote.BaseURL, "base-url", os.Getenv("SKGO_BASE_URL"), "Application base URL (or SKGO_BASE_URL)")
 	root.PersistentFlags().StringVar(&apiKey, "api-key", "", "Application API key (or SKGO_API_KEY)")
-	root.PersistentFlags().StringVar(&c.Remote.Base, "base", "", "Kit base path")
-	root.PersistentFlags().StringVar(&c.Remote.AppDir, "app-dir", "_app", "Kit app directory")
 
 	// Command layout and names are application choices, not generator policy.
 	tasks := &cobra.Command{Use: "tasks", Short: "Read and add tasks"}

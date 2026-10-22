@@ -9,6 +9,9 @@ and client from this directory:
 
 ```sh
 export GOWORK=off
+cd web
+vp install --frozen-lockfile
+cd ..
 go build -buildmode=plugin -o .local/mcp.so github.com/tylergannon/skgo/plugins/mcp
 go run ./cmd/generate -plugin "$PWD/.local/mcp.so"
 go tool skgo build --root .
@@ -17,11 +20,13 @@ go build -o .local/task-client ./cmd/client
 .local/task-list
 ```
 
-The build installs the pinned frontend through VitePlus. Open
+Generation reads the installed Kit configuration and compiles the remote endpoint
+path into the client. `--base-url` includes any application deployment path;
+there are no endpoint-directory flags. Open
 [the task list](http://127.0.0.1:8080), then use another terminal:
 
 ```sh
-export SKGO_ORIGIN=http://127.0.0.1:8080
+export SKGO_BASE_URL=http://127.0.0.1:8080
 .local/task-client --help
 .local/task-client tasks add --help
 .local/task-client tasks list
@@ -48,13 +53,13 @@ Failures exit nonzero; successful output is JSON with a `result` property.
 ## MCP from the same binary
 
 Configure an MCP host to launch the absolute path to `.local/task-client` with
-arguments `--origin http://127.0.0.1:8080 mcp`. It exposes `listTasks` and `addTask`
+arguments `--base-url http://127.0.0.1:8080 mcp`. It exposes `listTasks` and `addTask`
 with their Go documentation and schemas, over stdio. CLI commands and MCP tools
 share the generated client. The previous standalone entrypoint is also retained:
 
 ```sh
 go build -o .local/task-mcp ./cmd/mcp
-.local/task-mcp -origin http://127.0.0.1:8080
+.local/task-mcp -base-url http://127.0.0.1:8080
 ```
 
 ## Application-owned setup and authentication

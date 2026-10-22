@@ -37,7 +37,7 @@ func TestCLIAndMCPShareTheRealTaskHandlers(t *testing.T) {
 		var out bytes.Buffer
 		cmd.SetOut(&out)
 		cmd.SetErr(&out)
-		cmd.SetArgs(append([]string{"--origin", app.URL}, args...))
+		cmd.SetArgs(append([]string{"--base-url", app.URL}, args...))
 		err := cmd.Execute()
 		return out.String(), err
 	}
@@ -72,7 +72,7 @@ func TestCLIAndMCPShareTheRealTaskHandlers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c := &client.Client{Remote: remoteclient.Client{Origin: app.URL, PrepareRequest: func(r *http.Request) error { r.Header.Set("X-API-Key", "example-key"); return nil }}}
+	c := &client.Client{Remote: remoteclient.Client{BaseURL: app.URL, PrepareRequest: func(r *http.Request) error { r.Header.Set("X-API-Key", "example-key"); return nil }}}
 	tools := c.Tools()
 	if len(tools) != 2 || tools[0].Tool.Name != "addTask" || tools[1].Tool.Name != "listTasks" {
 		t.Fatalf("published tools=%+v", tools)
@@ -109,5 +109,13 @@ func TestHelpNeedsNoConnectionAndDoesNotExposeEnvironmentKey(t *testing.T) {
 	}
 	if strings.Contains(out.String(), "private-example-value") {
 		t.Fatal("help exposed an environment credential")
+	}
+	for _, flag := range []string{"--origin", "--base ", "--app-dir"} {
+		if strings.Contains(out.String(), flag) {
+			t.Fatalf("help exposed obsolete setting %s", flag)
+		}
+	}
+	if !strings.Contains(out.String(), "--base-url") {
+		t.Fatal("help omitted application base URL")
 	}
 }

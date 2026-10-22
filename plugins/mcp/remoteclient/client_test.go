@@ -14,9 +14,9 @@ import (
 
 func TestTransportErrorsPreserveCauseWithoutCommandWording(t *testing.T) {
 	offline := errors.New("offline")
-	c := Client{Origin: "https://app.test", HTTP: &http.Client{Transport: transport(func(*http.Request) (*http.Response, error) { return nil, offline })}}
+	c := Client{BaseURL: "https://app.test", HTTP: &http.Client{Transport: transport(func(*http.Request) (*http.Response, error) { return nil, offline })}}
 	for _, kind := range []string{"query", "command"} {
-		_, err := c.Call(context.Background(), "hash/read", kind, devalue.Undefined)
+		_, err := c.Call(context.Background(), "_app/remote/", "hash/read", kind, devalue.Undefined)
 		if !errors.Is(err, offline) || strings.Contains(err.Error(), "command") {
 			t.Fatalf("%s: %v", kind, err)
 		}
@@ -29,7 +29,7 @@ func (t transport) RoundTrip(r *http.Request) (*http.Response, error) { return t
 
 func TestRemoteRequestsAndEnvelopes(t *testing.T) {
 	requests := 0
-	client := Client{Origin: "https://app.test", Headers: http.Header{"Authorization": {"Bearer test-token"}, "X-Api-Key": {"test-key"}}, Base: "/shop", AppDir: "kit", HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
+	client := Client{BaseURL: "https://app.test/shop", Headers: http.Header{"Authorization": {"Bearer test-token"}, "X-Api-Key": {"test-key"}}, HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		requests++
 		if r.Header.Get("Authorization") != "Bearer test-token" || r.Header.Get("X-API-Key") != "test-key" {
 			t.Fatal("application authentication headers were not forwarded")
@@ -63,7 +63,7 @@ func TestRemoteRequestsAndEnvelopes(t *testing.T) {
 		if kind == "command" {
 			input = devalue.NewObject("title", "Ship MCP")
 		}
-		value, err := client.Call(context.Background(), "hash/read", kind, input)
+		value, err := client.Call(context.Background(), "kit/remote/", "hash/read", kind, input)
 		if err != nil || value != "observed" {
 			t.Fatalf("%s=%v %v", kind, value, err)
 		}
@@ -76,11 +76,11 @@ func TestRemoteRequestsAndEnvelopes(t *testing.T) {
 func TestRemoteFailures(t *testing.T) {
 	for _, body := range []string{`{"type":"error","error":{"status":403,"message":"Forbidden"}}`, `{"type":"result","data":"[42]"}`, `{"type":"other"}`, `<html>Login</html>`} {
 		calls := 0
-		c := Client{Origin: "https://app.test", HTTP: &http.Client{Transport: transport(func(*http.Request) (*http.Response, error) {
+		c := Client{BaseURL: "https://app.test", HTTP: &http.Client{Transport: transport(func(*http.Request) (*http.Response, error) {
 			calls++
 			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body))}, nil
 		})}}
-		if _, err := c.Call(context.Background(), "hash/write", "command", "title"); err == nil {
+		if _, err := c.Call(context.Background(), "_app/remote/", "hash/write", "command", "title"); err == nil {
 			t.Fatalf("accepted %s", body)
 		}
 		if calls != 1 {
@@ -92,7 +92,7 @@ func TestRemoteFailures(t *testing.T) {
 func TestRequestCallbackRunsForEachCallAndCanStopDispatch(t *testing.T) {
 	prepared, sent := 0, 0
 	rejected := errors.New("credentials unavailable")
-	c := Client{Origin: "https://app.test", PrepareRequest: func(r *http.Request) error {
+	c := Client{BaseURL: "https://app.test", PrepareRequest: func(r *http.Request) error {
 		prepared++
 		if prepared == 3 {
 			return rejected
@@ -110,12 +110,33 @@ func TestRequestCallbackRunsForEachCallAndCanStopDispatch(t *testing.T) {
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"type":"result","data":"[{\"_\":1},\"ok\"]"}`))}, nil
 	})}}
 	for _, kind := range []string{"query", "command"} {
-		if _, err := c.Call(context.Background(), "hash/call", kind, devalue.Undefined); err != nil {
+		if _, err := c.Call(context.Background(), "_app/remote/", "hash/call", kind, devalue.Undefined); err != nil {
 			t.Fatal(err)
 		}
 	}
-	_, err := c.Call(context.Background(), "hash/call", "command", devalue.Undefined)
+	_, err := c.Call(context.Background(), "_app/remote/", "hash/call", "command", devalue.Undefined)
 	if !errors.Is(err, rejected) || !errors.Is(err, ErrNotSent) || prepared != 3 || sent != 2 {
 		t.Fatalf("prepared=%d sent=%d err=%v", prepared, sent, err)
+	}
+}
+
+func TestBaseURLIncludesDeploymentPath(t *testing.T) {
+	for _, tt := range []struct{ base, want string }{
+		{"https://app.test", "https://app.test/configured/assets/remote/hash/write"},
+		{"https://app.test/shop/", "https://app.test/shop/configured/assets/remote/hash/write"},
+		{"https://app.test/shop%2Fbranch", "https://app.test/shop%2Fbranch/configured/assets/remote/hash/write"},
+		{"https://app.test/shop%2F", "https://app.test/shop%2F/configured/assets/remote/hash/write"},
+	} {
+		t.Run(tt.base, func(t *testing.T) {
+			c := Client{BaseURL: tt.base, HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
+				if r.URL.String() != tt.want || r.Header.Get("Origin") != "https://app.test" {
+					t.Fatalf("URL=%s origin=%s", r.URL, r.Header.Get("Origin"))
+				}
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"type":"result","data":"[{\"_\":1},\"ok\"]"}`))}, nil
+			})}}
+			if got, err := c.Call(t.Context(), "configured/assets/remote/", "hash/write", "command", "title"); err != nil || got != "ok" {
+				t.Fatalf("result=%v err=%v", got, err)
+			}
+		})
 	}
 }

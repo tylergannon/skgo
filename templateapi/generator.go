@@ -25,6 +25,13 @@ type MarkedGenerator interface {
 	RemoteMarker() string
 }
 
+// RemotePathGenerator requests the application's evaluated Kit endpoint prefix.
+// The host resolves it once for generators that need to emit HTTP clients.
+type RemotePathGenerator interface {
+	Generator
+	RequiresRemotePath() bool
+}
+
 // GeneratorInvocation selects one installed generator for an invocation.
 // ID and Version identify the provider. Selections are remote module paths
 // followed by #export; empty selects every eligible remote. MarkedGenerator
@@ -43,10 +50,13 @@ type GenerationRequest struct {
 	// generator must reject an absent or different value rather than expose
 	// an unfiltered model supplied by an unsupported host.
 	RemoteMarker string
-	Project      Project
-	Model        GenerationModel
-	Selections   []string
-	Options      map[string]string
+	// RemotePath is the configured appDir followed by /remote/, relative to
+	// the application's base URL. Populated for RemotePathGenerator providers.
+	RemotePath string
+	Project    Project
+	Model      GenerationModel
+	Selections []string
+	Options    map[string]string
 }
 
 // GenerationModel uses Polytype's public wire grammar. Roots indexes are local

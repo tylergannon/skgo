@@ -22,7 +22,7 @@ func (c *Client) AddTask(ctx context.Context, in contract0.NewTask) (contract0.T
 	if err != nil {
 		return zero, err
 	}
-	raw, err := c.Remote.Call(ctx, "1al4nqo/addTask", "command", input)
+	raw, err := c.Remote.Call(ctx, "_app/remote/", "1al4nqo/addTask", "command", input)
 	if err != nil {
 		return zero, err
 	}
@@ -37,7 +37,7 @@ func (c *Client) AddTask(ctx context.Context, in contract0.NewTask) (contract0.T
 func (c *Client) ListTasks(ctx context.Context) ([]contract0.Task, error) {
 	var zero []contract0.Task
 	input := any(devalue.Undefined)
-	raw, err := c.Remote.Call(ctx, "1al4nqo/listTasks", "query", input)
+	raw, err := c.Remote.Call(ctx, "_app/remote/", "1al4nqo/listTasks", "query", input)
 	if err != nil {
 		return zero, err
 	}

@@ -17,6 +17,7 @@ import (
 
 	"github.com/tylergannon/polytype/grammar"
 	"github.com/tylergannon/polytype/typegrammar"
+	"github.com/tylergannon/skgo/internal/adapter"
 	"github.com/tylergannon/skgo/internal/kithash"
 	"github.com/tylergannon/skgo/templateapi"
 	"golang.org/x/tools/imports"
@@ -152,6 +153,7 @@ func (a *app) runGenerators() error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	remotePath := ""
 	for _, inv := range a.cfg.Generators {
 		if inv.ID == "" || inv.Generator == nil || seenIDs[inv.ID] {
 			return fmt.Errorf("skgo: invalid or duplicate generator %q", inv.ID)
@@ -179,7 +181,13 @@ func (a *app) runGenerators() error {
 		if projectName == "" {
 			projectName = filepath.Base(root)
 		}
-		result, err := inv.Generator.Generate(ctx, templateapi.GenerationRequest{RemoteMarker: marker, Project: templateapi.Project{Root: root, Module: mod, Name: projectName, Web: a.cfg.Web}, Model: model, Selections: append([]string(nil), inv.Selections...), Options: options})
+		if provider, ok := inv.Generator.(templateapi.RemotePathGenerator); ok && provider.RequiresRemotePath() && remotePath == "" {
+			remotePath, err = adapter.RemotePath(ctx, a.cfg.Web)
+			if err != nil {
+				return err
+			}
+		}
+		result, err := inv.Generator.Generate(ctx, templateapi.GenerationRequest{RemoteMarker: marker, RemotePath: remotePath, Project: templateapi.Project{Root: root, Module: mod, Name: projectName, Web: a.cfg.Web}, Model: model, Selections: append([]string(nil), inv.Selections...), Options: options})
 		if err != nil {
 			return fmt.Errorf("skgo: generator %s: %w", inv.ID, err)
 		}

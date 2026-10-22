@@ -21,11 +21,11 @@ import (
 var ErrNotSent = errors.New("request not sent")
 
 // Client uses one application identity. Headers and HTTP may provide existing
-// application authentication. Base and AppDir describe the Kit deployment.
+// application authentication. BaseURL includes the application deployment path.
 type Client struct {
-	Origin, Base, AppDir string
-	Headers              http.Header
-	HTTP                 *http.Client
+	BaseURL string
+	Headers http.Header
+	HTTP    *http.Client
 	// PrepareRequest optionally customizes each outgoing request after standard headers
 	// are set. An error stops dispatch. Use it for fresh credentials or custom headers.
 	PrepareRequest func(*http.Request) error
@@ -33,16 +33,20 @@ type Client struct {
 
 // Call makes one request. Commands are never retried, and redirects are refused.
 // An error after dispatch does not establish that a command had no effect.
-func (c *Client) Call(ctx context.Context, id, kind string, input any) (any, error) {
-	u, err := url.Parse(c.Origin)
-	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.Path != "" && u.Path != "/" || u.RawQuery != "" || u.Fragment != "" {
-		return nil, fmt.Errorf("application origin must be an http(s) origin")
+func (c *Client) Call(ctx context.Context, remotePath, id, kind string, input any) (any, error) {
+	u, err := url.Parse(c.BaseURL)
+	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+		return nil, fmt.Errorf("application base URL must be an http(s) URL without credentials, query or fragment")
 	}
-	appDir := c.AppDir
-	if appDir == "" {
-		appDir = "_app"
+	origin := u.Scheme + "://" + u.Host
+	escapedBase := strings.TrimRight(u.EscapedPath(), "/")
+	basePath, err := url.PathUnescape(escapedBase)
+	if err != nil {
+		return nil, fmt.Errorf("application base URL path: %w", err)
 	}
-	u.Path = strings.TrimRight(c.Base, "/") + "/" + strings.Trim(appDir, "/") + "/remote/" + id
+	u.Path = basePath + "/" + remotePath + id
+	u.RawPath = escapedBase + "/" + (&url.URL{Path: remotePath + id}).EscapedPath()
+
 	var body io.Reader
 	method := http.MethodGet
 	switch kind {
@@ -82,7 +86,7 @@ func (c *Client) Call(ctx context.Context, id, kind string, input any) (any, err
 	}
 	req.Header.Set("Accept", "application/json")
 	if method == http.MethodPost {
-		req.Header.Set("Origin", c.Origin)
+		req.Header.Set("Origin", origin)
 		req.Header.Set("Content-Type", "application/json")
 	}
 	if c.PrepareRequest != nil {

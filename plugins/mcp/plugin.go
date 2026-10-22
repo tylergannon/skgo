@@ -13,6 +13,8 @@ var SkgoVersion = "dev"
 
 type mcpPlugin struct{}
 
+func (mcpPlugin) RequiresRemotePath() bool { return true }
+
 func SKGoPluginV1() templateapi.Plugin { return mcpPlugin{} }
 func (mcpPlugin) Describe() templateapi.Descriptor {
 	return templateapi.Descriptor{ID: "mcp", Version: Version, SkgoVersion: SkgoVersion, Generator: true,

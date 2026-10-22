@@ -15,7 +15,7 @@ import (
 )
 
 func TestGeneratorUsesResolvedIdentityAndDescriptions(t *testing.T) {
-	r := templateapi.GenerationRequest{RemoteMarker: (Generator{}).RemoteMarker(), Project: templateapi.Project{Module: "example.test/app", Name: "Tasks"}, Model: templateapi.GenerationModel{Roots: []tg.Type{&tg.Scalar{Kind: tg.String}}, Remotes: []templateapi.RemoteOperation{{Name: "read", Description: "Read the current task.", Selection: "src/tasks.remote.ts#read", ID: "resolved/read", Kind: "query", Input: -1, Output: 0}}}}
+	r := templateapi.GenerationRequest{RemoteMarker: (Generator{}).RemoteMarker(), RemotePath: "custom/assets/remote/", Project: templateapi.Project{Module: "example.test/app", Name: "Tasks"}, Model: templateapi.GenerationModel{Roots: []tg.Type{&tg.Scalar{Kind: tg.String}}, Remotes: []templateapi.RemoteOperation{{Name: "read", Description: "Read the current task.", Selection: "src/tasks.remote.ts#read", ID: "resolved/read", Kind: "query", Input: -1, Output: 0}}}}
 	got, err := (Generator{}).Generate(context.Background(), r)
 	if err != nil {
 		t.Fatal(err)
@@ -29,7 +29,7 @@ func TestGeneratorUsesResolvedIdentityAndDescriptions(t *testing.T) {
 		}
 	}
 	client := string(got.Files[1].Content)
-	if !strings.Contains(client, `"resolved/read"`) || !strings.Contains(client, "Read the current task.") {
+	if !strings.Contains(client, `"custom/assets/remote/"`) || !strings.Contains(client, `"resolved/read"`) || !strings.Contains(client, "Read the current task.") {
 		t.Fatalf("missing model data: %s", client)
 	}
 	r.Selections = []string{"src/tasks.remote.ts#read"}
@@ -99,7 +99,7 @@ func TestSchemasIncludeOnlyReachableDefinitions(t *testing.T) {
 }
 
 func TestDuplicateToolNamesRemainConflictingGo(t *testing.T) {
-	r := templateapi.GenerationRequest{RemoteMarker: (Generator{}).RemoteMarker(), Model: templateapi.GenerationModel{
+	r := templateapi.GenerationRequest{RemoteMarker: (Generator{}).RemoteMarker(), RemotePath: "custom/assets/remote/", Model: templateapi.GenerationModel{
 		Roots: []tg.Type{&tg.Scalar{Kind: tg.String}},
 		Remotes: []templateapi.RemoteOperation{
 			{Name: "read", Description: "Read one.", ID: "one/read", Kind: "query", Input: -1, Output: 0},
