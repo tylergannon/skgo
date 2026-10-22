@@ -2,7 +2,10 @@ module github.com/tylergannon/skgo/plugins/native-shell/example
 
 go 1.27.2
 
-ignore ./web/node_modules
+ignore (
+	./web/node_modules
+	./web/src/routes
+)
 
 require (
 	github.com/tylergannon/devalue/v5 v5.0.0

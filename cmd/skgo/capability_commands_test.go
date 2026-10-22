@@ -82,7 +82,7 @@ func provisionalCapabilityHost(t *testing.T, repo, root string) string {
 	// version never enters the shared one, and nothing here is about dependency
 	// integrity, so the checksum database stays off.
 	dependencies := capabilityDependencyProxy(t, repo)
-	t.Setenv("GOWORK", "off")
+	t.Setenv("GOWORK", "")
 	t.Setenv("GOMODCACHE", filepath.Join(root, "modcache"))
 	t.Setenv("GOPATH", filepath.Join(root, "gopath"))
 	t.Setenv("GOBIN", filepath.Join(root, "bin"))

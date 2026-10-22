@@ -22,7 +22,9 @@ var loaderOS embed.FS
 // OS adapters and numeric retirement integration. dir is a private host module, never authored
 // application source. Its dependency declaration points at this private copy.
 func (t Toolchain) PrepareLoader(ctx context.Context, dir, parent string) (string, error) {
-	cmd := t.command(ctx, dir, "mod", "download", "-json", "github.com/pkujhd/goloader@"+LoaderVersion)
+	downloadTC := t
+	downloadTC.ModFile = ""
+	cmd := downloadTC.command(ctx, dir, "mod", "download", "-json", "github.com/pkujhd/goloader@"+LoaderVersion)
 	raw, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("download native loader: %w\n%s", err, raw)
@@ -122,7 +124,6 @@ func (t Toolchain) PrepareLoader(ctx context.Context, dir, parent string) (strin
 			// Loader edits belong to its own module, never the application's modfile.
 			tool.ModFile = ""
 			tool.Overlay = ""
-			tool.Env = append(t.environment(), "GOWORK=off")
 		}
 		output, err := tool.command(ctx, dir, args...).CombinedOutput()
 		if err != nil {

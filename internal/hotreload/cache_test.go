@@ -25,7 +25,7 @@ func TestHostCacheResolvesUnchangedModulesAtTheNextRevisionsPaths(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("GOWORK", "off")
+	t.Setenv("GOWORK", "")
 	app := filepath.Join(work, "app")
 	write := func(name, body string) {
 		t.Helper()

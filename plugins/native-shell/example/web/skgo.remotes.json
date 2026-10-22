@@ -1,15 +1,18 @@
 {
-  "remotes": ["uy1bk5/readValue", "uy1bk5/writeValue"],
-  "loads": [],
-  "actions": [],
-  "endpoints": {},
-  "prerender": {
-    "root": "..",
-    "package": "./internal/skgo/prerender"
-  },
-  "build": {
-    "src/hooks.server.ts": {
-      "hook": true
-    }
-  }
+	"remotes": [
+		"uy1bk5/readValue",
+		"uy1bk5/writeValue"
+	],
+	"loads": [],
+	"actions": [],
+	"endpoints": {},
+	"prerender": {
+		"root": "..",
+		"package": "./internal/skgo/prerender"
+	},
+	"build": {
+		"src/hooks.server.ts": {
+			"hook": true
+		}
+	}
 }

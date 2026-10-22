@@ -41,7 +41,7 @@ func TestGeneratedNativeLifetime(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
-	t.Setenv("GOWORK", "off")
+	t.Setenv("GOWORK", "")
 	t.Setenv("CGO_ENABLED", "0")
 	t.Setenv("CC", filepath.Join(t.TempDir(), "no-c-compiler"))
 	root, err := filepath.Abs("../..")

@@ -16,7 +16,7 @@ func TestStagedEmbedsLeaveUnmatchedTreesAlone(t *testing.T) {
 	for path, contents := range files {
 		cacheWrite(t, filepath.Join(dir, path), contents)
 	}
-	cfg := &packages.Config{Dir: dir, Env: append(os.Environ(), "GOWORK=off"), Overlay: map[string][]byte{filepath.Join(dir, "generated.go"): []byte("package fixture\nconst Receipt=613\n")}}
+	cfg := &packages.Config{Dir: dir, Env: append(os.Environ(), "GOWORK="), Overlay: map[string][]byte{filepath.Join(dir, "generated.go"): []byte("package fixture\nconst Receipt=613\n")}}
 	cleanup, err := stagePackageOverlay(cfg)
 	if err != nil {
 		t.Fatal(err)

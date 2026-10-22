@@ -20,6 +20,52 @@ func (f fixtureGenerator) Generate(ctx context.Context, r templateapi.Generation
 	return f(ctx, r)
 }
 
+type remotePathFixture struct{ fixtureGenerator }
+
+func (remotePathFixture) RequiresRemotePath() bool { return true }
+
+func TestGeneratorReceivesConfiguredRemotePath(t *testing.T) {
+	root := t.TempDir()
+	a, _ := emitterPackage(t, root, "package data\n")
+	if err := os.MkdirAll(filepath.Join(a.cfg.Web, "src"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	repo, err := repoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(repo, "example/web/node_modules"), filepath.Join(a.cfg.Web, "node_modules")); err != nil {
+		t.Fatal(err)
+	}
+	for name, text := range map[string]string{
+		"package.json":   `{"type":"module"}`,
+		"src/app.html":   `<html><head>%sveltekit.head%</head><body>%sveltekit.body%</body></html>`,
+		"vite.config.ts": `import {sveltekit} from '@sveltejs/kit/vite'; export default {plugins:[sveltekit({appDir:'private-assets',paths:{base:'/shop'}})]};`,
+	} {
+		if err := os.WriteFile(filepath.Join(a.cfg.Web, name), []byte(text), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	a.cfg.generation.links, err = newRouteLinks(a.cfg, root, "example.com/app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	called := false
+	a.cfg.Generators = []templateapi.GeneratorInvocation{{ID: "endpoint", Generator: remotePathFixture{func(_ context.Context, r templateapi.GenerationRequest) (templateapi.GenerationResult, error) {
+		called = true
+		if r.RemotePath != "private-assets/remote/" {
+			t.Fatalf("configured path=%q", r.RemotePath)
+		}
+		return templateapi.GenerationResult{}, nil
+	}}}}
+	if err := a.runGenerators(); err != nil {
+		t.Fatal(err)
+	}
+	if !called {
+		t.Fatal("generator was not called")
+	}
+}
+
 func TestGeneratorResolvedRemoteModel(t *testing.T) {
 	a, gp := emitterPackage(t, t.TempDir(), "package data\ntype Value struct { Text string `json:\"text\"` }\n")
 	value := gp.pkg.Types.Scope().Lookup("Value").Type()

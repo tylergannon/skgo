@@ -10,8 +10,9 @@ import (
 	"github.com/tylergannon/skgo/internal/envspec"
 )
 
-func environmentCommand(args []string, in io.Reader, out io.Writer) error {
+func environmentCommand(args []string, in io.Reader, out, stderr io.Writer) error {
 	flags := flag.NewFlagSet("env", flag.ContinueOnError)
+	flags.SetOutput(stderr)
 	schemaFile := flags.String("schema", "skgo.env.json", "generated environment declaration")
 	if err := flags.Parse(args); err != nil {
 		return err

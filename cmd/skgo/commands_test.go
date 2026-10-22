@@ -6,7 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
-	"os/exec"
+
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -165,35 +165,79 @@ func TestUsageListsEveryCommand(t *testing.T) {
 	}
 }
 
-// The documentation runs each command's help at build time and fails on a
-// non-zero exit, so every listed command, and skgo itself, must print help
-// for -h and --help and succeed. One shared binary serves every case; each
-// runs in an empty directory with an empty home so no application or
-// installed plugin is found.
+// Exercise the actual dispatcher and flag parsers in this process. Each case
+// must return successful help with a command-specific synopsis and its flags.
 func TestEveryCommandHelpExitsZero(t *testing.T) {
-	bin := skgoBinary(t)
-	invocations := [][]string{nil}
-	for _, command := range commands.All() {
-		invocations = append(invocations, strings.Fields(command.Name))
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("SKGO_PLUGIN_DIRS", "")
+	t.Chdir(t.TempDir())
+	cases := []struct {
+		args  []string
+		want  string
+		flags []string
+	}{
+		{nil, "usage:", []string{"skgo new", "skgo check", "skgo mcp"}},
 	}
-	for _, words := range invocations {
+	for _, command := range commands.All() {
+		var flags []string
+		for _, f := range command.Flags {
+			flags = append(flags, "-"+f.Name)
+		}
+		cases = append(cases, struct {
+			args  []string
+			want  string
+			flags []string
+		}{strings.Fields(command.Name), "Usage of " + command.Name + ":", flags})
+	}
+	for _, tc := range cases {
 		for _, help := range []string{"-h", "--help"} {
-			args := append(append([]string{}, words...), help)
+			args := append(append([]string{}, tc.args...), help)
 			t.Run(strings.Join(args, " "), func(t *testing.T) {
-				t.Parallel()
-				dir := t.TempDir()
-				cmd := exec.CommandContext(t.Context(), bin, args...)
-				cmd.Dir = dir
-				cmd.Env = append(os.Environ(), "HOME="+dir, "SKGO_PLUGIN_DIRS=")
-				var output bytes.Buffer
-				cmd.Stdout, cmd.Stderr = &output, &output
-				if err := cmd.Run(); err != nil {
-					t.Fatalf("skgo %s: %v\n%s", strings.Join(args, " "), err, output.String())
+				var stdout, stderr bytes.Buffer
+				code := run(t.Context(), args, strings.NewReader(""), &stdout, &stderr)
+				output := stdout.String() + stderr.String()
+				if code != 0 {
+					t.Fatalf("status=%d output=%s", code, output)
 				}
-				if strings.TrimSpace(output.String()) == "" {
-					t.Fatalf("skgo %s printed nothing", strings.Join(args, " "))
+				// Some commands supply their own synopsis rather than flag's default.
+				name := strings.Join(tc.args, " ")
+				want := tc.want
+				switch name {
+				case "new", "plugin", "add", "mcp":
+					want = "usage: skgo " + name
+				case "kit-patch":
+					want = "usage: go tool skgo kit-patch"
+				}
+				if !strings.Contains(output, want) {
+					t.Fatalf("missing synopsis %q: %s", want, output)
+				}
+				for _, flag := range tc.flags {
+					if !strings.Contains(output, flag) {
+						t.Errorf("missing flag %s: %s", flag, output)
+					}
 				}
 			})
+		}
+	}
+}
+
+func TestDispatcherReportsUsageAndApplicationFailures(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing-schema.json")
+	for _, tc := range []struct {
+		args []string
+		code int
+		want string
+	}{
+		{nil, 2, "usage:"},
+		{[]string{"unknown-command"}, 2, "usage:"},
+		{[]string{"update", "--not-a-flag"}, 2, "flag provided but not defined"},
+		{[]string{"kit-patch", "--not-a-flag"}, 2, "flag provided but not defined"},
+		{[]string{"check", "--not-a-flag"}, 2, "flag provided but not defined"},
+		{[]string{"env", "--schema", missing}, 1, "missing-schema.json"},
+	} {
+		var out bytes.Buffer
+		if code := run(t.Context(), tc.args, strings.NewReader(""), &out, &out); code != tc.code || !strings.Contains(out.String(), tc.want) {
+			t.Errorf("args=%v code=%d output=%s", tc.args, code, out.String())
 		}
 	}
 }

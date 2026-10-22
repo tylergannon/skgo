@@ -51,7 +51,7 @@ spot-checked against HEAD and Kit 3.1.0 before any edit.
 - `AGENTS.md`, no added lines: "After a merge that publishes a release" became
   "After a release publishes" (since #402 no merge publishes); the guide-pages
   route also names the README, which its writing rules cover.
-- `internal/toolchain/pins.go` godoc: skgo-project's docgen reads the constants
+- `internal/toolchain/pins.go` godoc: documentation tooling reads the constants
   by name (the #364 `NodeMinimum` rename).
 - Test comments citing the deleted `ephemeral/inspiration` cache and a
   never-committed `csp-ground-truth.md` (`refresh_test.go`, `csp_test.go`,

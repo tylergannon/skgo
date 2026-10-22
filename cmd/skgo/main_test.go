@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -68,9 +69,10 @@ func TestMultipleApplicationSelectionsAreRejected(t *testing.T) {
 		{"generate", "--locals-package", "example.com/app", "--hook-package", "example.com/first", "--hook-package=example.com/second"},
 		{"check", "-hook-package=example.com/first", "-hook-package=example.com/second"},
 	} {
-		output, err := exec.Command(skgoBinary(t), args...).CombinedOutput()
-		if err == nil || !strings.Contains(string(output), "multiple configured selections for hook-package") {
-			t.Fatalf("selection diagnostic: %v %s", err, output)
+		var output bytes.Buffer
+		code := run(t.Context(), args, strings.NewReader(""), &output, &output)
+		if code != 2 || output.String() != "skgo: multiple configured selections for hook-package\n" {
+			t.Fatalf("selection status=%d diagnostic=%s", code, output.String())
 		}
 	}
 }

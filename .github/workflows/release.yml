@@ -1,6 +1,6 @@
 name: Release
 
-# A qualified version tag starts publication. Re-run this workflow for the same
+# A version tag starts publication. Re-run this workflow for the same
 # tag to finish a failed release. Keep this path for npm's trusted publisher.
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing qualified version tag to publish again
+        description: Existing version tag to publish again
         required: true
 
 concurrency:
@@ -26,30 +26,22 @@ jobs:
     outputs:
       version: ${{ steps.tag.outputs.version }}
       candidate: ${{ steps.tag.outputs.candidate }}
-      attempt: ${{ steps.tag.outputs.attempt }}
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref_name }}
           fetch-depth: 0
-      - name: Read the tagged source and qualification
+      - name: Read the tagged source
         id: tag
         env:
           VERSION: ${{ inputs.tag || github.ref_name }}
-          APPROVED_HARNESS: ${{ vars.QUALIFICATION_HARNESS_REVISION }}
         run: |
           [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           candidate=$(git rev-parse "$VERSION^{commit}")
           test "$(git rev-parse HEAD)" = "$candidate"
           git merge-base --is-ancestor HEAD origin/main
-          attempt=$(git for-each-ref --format='%(contents)' "refs/tags/$VERSION" | sed -n 's/^Qualification: //p')
-          [[ "$attempt" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]]
-          curl --fail --silent --show-error "https://skgo-site.fly.dev/api/qualification/$attempt" > assessment.json
-          [[ "$APPROVED_HARNESS" =~ ^[a-f0-9]{40}$ ]]
-          jq -e --arg sha "$candidate" --arg id "$attempt" --arg harness "$APPROVED_HARNESS" '.id == $id and .candidate == $sha and .harness == $harness and .contract == "core-web-v1" and .state == "completed" and .verdict == "qualified"' assessment.json
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "candidate=$candidate" >> "$GITHUB_OUTPUT"
-          echo "attempt=$attempt" >> "$GITHUB_OUTPUT"
 
   linux-cli:
     name: CLI (${{ matrix.arch }})
@@ -408,36 +400,3 @@ jobs:
             exit 0
           fi
           go run ./cmd/skgo-release tap homebrew-tap "$VERSION"
-
-  receipt:
-    name: Report publication and request installation observation
-    needs: [source, publish]
-    if: always() && needs.source.result == 'success'
-    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
-    environment: release
-    steps:
-      - name: Record this publication result
-        env:
-          STATUS_WRITE_TOKEN: ${{ secrets.STATUS_WRITE_TOKEN }}
-          CANDIDATE: ${{ needs.source.outputs.candidate }}
-          ATTEMPT: ${{ needs.source.outputs.attempt }}
-          VERSION: ${{ needs.source.outputs.version }}
-          RESULT: ${{ needs.publish.result }}
-        run: |
-          id="release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          echo "PUBLICATION=$id" >> "$GITHUB_ENV"
-          state=failed
-          if test "$RESULT" = success; then state=published; fi
-          for outcome in requested "$state"; do
-            jq -n --arg id "$id" --arg attempt "$ATTEMPT" --arg sha "$CANDIDATE" --arg tag "$VERSION" --arg state "$outcome" --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" '{id:$id,attempt:$attempt,candidate:$sha,tag:$tag,state:$state,run:$run}' > publication.json
-            curl --fail --silent --show-error -H "Authorization: Bearer $STATUS_WRITE_TOKEN" -H 'Content-Type: application/json' --data-binary @publication.json https://skgo-site.fly.dev/api/core-publications
-          done
-      - name: Request actual published-channel confirmation
-        if: needs.publish.result == 'success'
-        env:
-          GH_TOKEN: ${{ secrets.SKGO_PROJECT_DISPATCH_TOKEN }}
-          CANDIDATE: ${{ needs.source.outputs.candidate }}
-          VERSION: ${{ needs.source.outputs.version }}
-        run: |
-          jq -n --arg sha "$CANDIDATE" --arg tag "$VERSION" --arg publication "$PUBLICATION" '{event_type:"skgo-core-published",client_payload:{sha:$sha,tag:$tag,publication:$publication}}' > installation-request.json
-          gh api repos/tylergannon/skgo-project/dispatches --input installation-request.json

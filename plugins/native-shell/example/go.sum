@@ -43,6 +43,8 @@ github.com/tylergannon/devalue/v5 v5.0.0 h1:UZuNeNpVXHnn79lOS/l7gEWcC4jKoILHUb0s
 github.com/tylergannon/devalue/v5 v5.0.0/go.mod h1:F3VxJn5uu/ROJxoVB3zhxFwuWl+jUrv6n6EJC5yB3z8=
 github.com/tylergannon/polytype v1.10.0 h1:GBjoOATxJjHUbpq3s3mkU50pEwQEocT9/zMxWc3j2Ds=
 github.com/tylergannon/polytype v1.10.0/go.mod h1:go8LF2qxZ3cpymGOfA4/BfDodZL6446Aq4TmhLeoN6c=
+github.com/tylergannon/skgo v0.41.0 h1:2Q33IBbn+dIIAIOiN6DycL9TsP9/VdaLJ1RPqac4H/U=
+github.com/tylergannon/skgo v0.41.0/go.mod h1:NxqD4KTuODvPJafwaaiPodzlxzpr8TWjeA5+0x1cEGI=
 github.com/tylergannon/structtag v0.1.0 h1:Vn4ZEemGUtAfw9ddEtHQILKnIWqSWCSpciFTNPh1gcY=
 github.com/tylergannon/structtag v0.1.0/go.mod h1:Rjgg4hJfebaKNeyqoLh4n+zKhfVBdMyc7nBHIlQsVw0=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=

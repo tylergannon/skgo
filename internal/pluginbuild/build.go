@@ -168,7 +168,7 @@ func Build(ctx context.Context, o Options) error {
 	if err := os.WriteFile(filepath.Join(stage, "go.mod"), data, 0644); err != nil {
 		return err
 	}
-	env := append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=mod", "GOTOOLCHAIN="+host.Build.GoVersion)
+	env := append(os.Environ(), "GOWORK=", "GOFLAGS=-mod=mod", "GOTOOLCHAIN="+host.Build.GoVersion)
 	for _, key := range []string{"GOOS", "GOARCH", "GOAMD64", "GOARM", "GOARM64", "GO386", "GOMIPS", "GOMIPS64", "GOPPC64", "GORISCV64", "GOEXPERIMENT", "CGO_ENABLED", "CGO_CFLAGS", "CGO_CPPFLAGS", "CGO_CXXFLAGS", "CGO_LDFLAGS"} {
 		if v, ok := settings[key]; ok {
 			env = append(env, key+"="+v)

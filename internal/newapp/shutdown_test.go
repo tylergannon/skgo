@@ -82,7 +82,7 @@ func TestGeneratedApplicationShutdown(t *testing.T) {
 	binary := filepath.Join(dir, "shutdown-app")
 	build := exec.CommandContext(t.Context(), "go", "build", "-mod=mod", "-o", binary, "./cmd")
 	build.Dir = dir
-	build.Env = append(os.Environ(), "GOWORK=off")
+	build.Env = append(os.Environ(), "GOWORK=")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build generated application: %v\n%s", err, output)
 	}

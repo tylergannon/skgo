@@ -1,0 +1,41 @@
+name: CLI plugin unit tests
+on:
+  push:
+    branches-ignore: [main]
+    tags-ignore: ['**']
+    paths:
+      - 'plugins/cli/**'
+      - 'templateapi/**'
+      - 'internal/gen/**'
+      - 'remoteprotocol/**'
+      - 'internal/remotearg/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/cli-plugin-tests.yml'
+  pull_request:
+    paths:
+      - 'plugins/cli/**'
+      - 'templateapi/**'
+      - 'internal/gen/**'
+      - 'remoteprotocol/**'
+      - 'internal/remotearg/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/cli-plugin-tests.yml'
+permissions:
+  contents: read
+jobs:
+  units:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: plugins/cli/go.mod
+          cache: false
+          cache-dependency-path: plugins/cli/go.sum
+      - name: Generator, JSON and HTTP transport unit tests
+        working-directory: plugins/cli
+        run: go test ./...

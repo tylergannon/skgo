@@ -18,7 +18,6 @@ this directory before installing the plugin. Disable the parent core workspace
 when working in this checkout.
 
 ```sh
-export GOWORK=off
 skgo update --complete-version VERSION --root .
 skgo plugin install --prebuilt ARTIFACT --sha256 PUBLISHED_SHA256 \
   --select 'src/routes/value.remote.ts#readValue' \

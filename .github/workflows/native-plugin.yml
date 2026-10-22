@@ -1,7 +1,6 @@
 name: Native plugin release
 
 # Deliberately independent of pushes, the core version, and core qualification.
-# NATIVE_GATE_TOKEN can dispatch and read Actions in private skgo-project.
 on:
   workflow_dispatch:
     inputs:
@@ -45,8 +44,6 @@ jobs:
           cache: false
       - name: Native module, generated Swift and SDK regression tests
         working-directory: plugins/native-shell
-        env:
-          GOWORK: 'off'
         run: go test -tags skgo_qualification -count=1 ./...
       - name: Zig SDK unit tests and Swift link library
         working-directory: plugins/native-shell/sdk/core
@@ -84,22 +81,9 @@ jobs:
           path: candidate/*
           if-no-files-found: error
           retention-days: 30
-      - name: Request the private tiny-application gate
-        env:
-          GH_TOKEN: ${{ secrets.NATIVE_GATE_TOKEN }}
-          CORE_VERSION: ${{ inputs.core_version }}
-          PLUGIN_VERSION: ${{ inputs.plugin_version }}
-          CANDIDATE_SHA256: ${{ steps.candidate.outputs.sha256 }}
-          SOURCE_SHA: ${{ steps.candidate.outputs.source_sha }}
-        run: |
-          gh workflow run native-plugin-gate.yml --repo tylergannon/skgo-project --ref main \
-            -f candidate_run="$GITHUB_RUN_ID" -f candidate_sha256="$CANDIDATE_SHA256" \
-            -f plugin_version="$PLUGIN_VERSION" -f core_version="$CORE_VERSION" -f source_sha="$SOURCE_SHA"
 
   publish:
-    # The private gate supplies its successful run, the source candidate run,
-    # and the digest it actually exercised. Neither a merge nor candidate build
-    # can authorize this job. This job never recompiles the plugin.
+    # Publish the requested candidate bytes without recompiling them.
     if: github.event_name == 'repository_dispatch'
     runs-on: [self-hosted, Linux, X64, skgo-release, bob]
     environment: release
@@ -108,29 +92,21 @@ jobs:
       contents: write
       actions: read
     steps:
-      - name: Validate the private gate's authorization
+      - name: Validate the release request
         id: authorized
         env:
-          GH_TOKEN: ${{ secrets.NATIVE_GATE_TOKEN }}
-          GATE_RUN: ${{ github.event.client_payload.gate_run }}
+          GH_TOKEN: ${{ github.token }}
           CANDIDATE_RUN: ${{ github.event.client_payload.candidate_run }}
           CANDIDATE_SHA256: ${{ github.event.client_payload.candidate_sha256 }}
           PLUGIN_VERSION: ${{ github.event.client_payload.plugin_version }}
           CORE_VERSION: ${{ github.event.client_payload.core_version }}
           SOURCE_SHA: ${{ github.event.client_payload.source_sha }}
         run: |
-          [[ "$GATE_RUN" =~ ^[0-9]+$ ]]
           [[ "$CANDIDATE_RUN" =~ ^[0-9]+$ ]]
           [[ "$CANDIDATE_SHA256" =~ ^[0-9a-f]{64}$ ]]
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$PLUGIN_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           [[ "$CORE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          gh api "repos/tylergannon/skgo-project/actions/runs/$GATE_RUN" > gate.json
-          jq -e '.conclusion == "success" and .path == ".github/workflows/native-plugin-gate.yml" and .head_branch == "main" and .event == "workflow_dispatch"' gate.json
-          gh run download "$GATE_RUN" --repo tylergannon/skgo-project --name native-plugin-authorization --dir authorization
-          jq -e --arg candidate "$CANDIDATE_RUN" --arg sha "$CANDIDATE_SHA256" --arg plugin "$PLUGIN_VERSION" --arg core "$CORE_VERSION" --arg source "$SOURCE_SHA" \
-            '(.candidate_run | tostring) == $candidate and .candidate_sha256 == $sha and .plugin_version == $plugin and .core_version == $core and .source_sha == $source' \
-            authorization/native-plugin-authorization.json
           echo "artifact=native-shell-${PLUGIN_VERSION}-skgo-${CORE_VERSION}-darwin-arm64.so" >> "$GITHUB_OUTPUT"
       - name: Validate the source candidate run
         env:
@@ -146,7 +122,7 @@ jobs:
           run-id: ${{ github.event.client_payload.candidate_run }}
           name: native-shell-candidate
           path: candidate
-      - name: Publish only the qualified bytes, outside core's latest channel
+      - name: Publish the requested bytes outside core's latest channel
         env:
           GH_TOKEN: ${{ github.token }}
           ARTIFACT: ${{ steps.authorized.outputs.artifact }}
@@ -154,7 +130,6 @@ jobs:
           PLUGIN_VERSION: ${{ github.event.client_payload.plugin_version }}
           CORE_VERSION: ${{ github.event.client_payload.core_version }}
           SOURCE_SHA: ${{ github.event.client_payload.source_sha }}
-          GATE_RUN: ${{ github.event.client_payload.gate_run }}
         run: |
           echo "$CANDIDATE_SHA256  candidate/$ARTIFACT" | sha256sum --check
           (cd candidate && sha256sum --check checksums.txt)
@@ -165,7 +140,7 @@ jobs:
           fi
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" --latest=false \
             --title "native-shell $PLUGIN_VERSION for skgo $CORE_VERSION" \
-            --notes "Exact official host: skgo $CORE_VERSION, macOS ARM64. Qualified by tylergannon/skgo-project Actions run $GATE_RUN." \
+            --notes "Exact official host: skgo $CORE_VERSION, macOS ARM64. Source: $SOURCE_SHA." \
             "candidate/$ARTIFACT" candidate/checksums.txt
           mkdir downloaded
           gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "$ARTIFACT" --dir downloaded

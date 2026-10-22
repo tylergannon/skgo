@@ -39,8 +39,8 @@ Vite/Kit SSR and HMR, calling Go for application logic
 ## Testing
 
 - Tests let agents check quickly that a change broke nothing else. Passing
-  tests are not proof of work, not the definition of done, and do not qualify
-  a release; skgo-project qualifies releases.
+  tests are not proof of work, not the definition of done, and do not by themselves authorize
+  a release.
 - Contracts are Go tests at the real handler with literal fixtures. A test
   that needs a running server is named for what it checks, lives in the
   package it checks, and lets Go own the server and its cleanup. There is no

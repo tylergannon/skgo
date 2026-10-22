@@ -41,9 +41,9 @@ clean:
     rm -rf example/.skgo example/web/.svelte-kit
     find example/web/build -mindepth 1 ! -name .gitkeep -delete
 
-# go vet, both modules
+# go vet, all workspace modules
 vet:
-    go vet ./... ./example/...
+    go vet ./... ./example/... ./plugins/cli/... ./plugins/cli/example/... ./plugins/native-shell/... ./plugins/native-shell/example/...
 
 # Checker tools that can read this Go toolchain's export data, kept in .tools/.
 tools:
@@ -58,7 +58,7 @@ tools:
 # Compiler/process and built-example witnesses are selected explicitly by CI
 # with skgo_qualification; ordinary contracts use Go's normal test cache.
 test *args: tools
-    cd example/web && vp exec go -C ../.. test {{args}} ./... ./example/...
+    cd example/web && vp exec go -C ../.. test {{args}} ./... ./example/... ./plugins/cli/... ./plugins/cli/example/... ./plugins/native-shell/... ./plugins/native-shell/example/...
 
 # the example server, against the built frontend
 serve:
@@ -83,7 +83,5 @@ worktree branch base="main":
 ports:
     lsof -nP -iTCP -sTCP:LISTEN
 
-# Releases have no local recipe. A core change merged to main announces a
-# candidate to skgo-project for qualification (candidate.yml); a manual
-# release.yml dispatch naming a qualified candidate publishes the signed CLI
-# and npm packages and updates Homebrew.
+# Releases have no local recipe. Version tags start release.yml, which publishes
+# signed CLI archives and npm packages and updates Homebrew.

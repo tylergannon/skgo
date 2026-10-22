@@ -22,7 +22,7 @@ func TestPackageSnapshotAdmission(t *testing.T) {
 	pkg.PkgPath = "snapshot.test"
 	pkg.GoFiles = []string{path}
 	pkg.Module = &packages.Module{Path: "snapshot.test", Main: true, Dir: root, GoMod: filepath.Join(root, "go.mod")}
-	load := &packages.Config{Dir: root, Mode: packages.NeedModule | packages.NeedFiles | packages.NeedTypes | packages.NeedSyntax, Env: []string{"GOWORK=off", "GOPACKAGESDRIVER=off"}}
+	load := &packages.Config{Dir: root, Mode: packages.NeedModule | packages.NeedFiles | packages.NeedTypes | packages.NeedSyntax, Env: []string{"GOWORK=", "GOPACKAGESDRIVER=off"}}
 	snapshot, err := NewPackageSnapshot(load, pkg)
 	if err != nil {
 		t.Fatal(err)

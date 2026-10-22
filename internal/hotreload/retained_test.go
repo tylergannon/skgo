@@ -32,7 +32,7 @@ func TestRetainedApplicationCallerAndDependencyGuards(t *testing.T) {
 	write("caller/caller.go", "package caller\nimport \"example.com/retained/target\"\nfunc Call()int{return target.Value()}\n")
 	q := &retainedApplication{files: files, analysis: &retainedAnalysis{}}
 	defer q.analysis.close()
-	cfg := &packages.Config{Context: context.Background(), Dir: root, Env: append(os.Environ(), "GOWORK=off"), Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
+	cfg := &packages.Config{Context: context.Background(), Dir: root, Env: append(os.Environ(), "GOWORK="), Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedModule}
 	if _, err := q.Load(cfg, "example.com/retained/target", "./..."); err != nil {
 		t.Fatal(err)
 	}

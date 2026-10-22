@@ -89,15 +89,11 @@ func (t Toolchain) hostModules(ctx context.Context, dir, parent, loaders string)
 	} else if !os.IsNotExist(err) {
 		return Toolchain{}, err
 	}
-	// -modfile is forbidden in workspace mode. Prepare loader requirements in
-	// the private modfile, then add the private loader as a workspace member.
+	// Prepare requirements in the private modfile with go mod edit, then add
+	// the private loader as a workspace member for compilation.
 	// All captured application members and workspace replacements stay selected.
 	work := t.envValue("GOWORK")
-	loaderTC := t
-	if work != "" && work != "off" {
-		loaderTC.Env = append(t.environment(), "GOWORK=off")
-	}
-	loader, err := loaderTC.PrepareLoader(ctx, dir, loaders)
+	loader, err := t.PrepareLoader(ctx, dir, loaders)
 	if err != nil {
 		return Toolchain{}, err
 	}

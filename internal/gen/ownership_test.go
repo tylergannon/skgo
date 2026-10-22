@@ -40,7 +40,7 @@ func foreignFixtureIn(t *testing.T, root string, remote string, extra map[string
 	t.Helper()
 	// The fixture is not a member of this repository's workspace, so the go
 	// commands the generator runs have to see the fixture's own go.mod.
-	// GOWORK is off for the whole package (TestMain).
+	// The fixture lives outside the repository workspace.
 
 	write := func(path, content string) {
 		t.Helper()

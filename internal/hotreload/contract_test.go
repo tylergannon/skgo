@@ -30,7 +30,7 @@ func TestGeneratedNativeHandlerContract(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	t.Setenv("CGO_ENABLED", "0")
-	t.Setenv("GOWORK", "off")
+	t.Setenv("GOWORK", "")
 	t.Setenv("CC", filepath.Join(t.TempDir(), "no-C-compiler"))
 	root, err := filepath.Abs("../..")
 	if err != nil {
@@ -408,7 +408,7 @@ func startContractHost(t *testing.T, ctx context.Context, dir, bin string) *cont
 	t.Helper()
 	cmd := exec.CommandContext(ctx, bin)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOWORK=off")
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOWORK=")
 	in, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatal(err)

@@ -212,13 +212,13 @@ func (t Toolchain) command(ctx context.Context, dir string, args ...string) *exe
 	return cmd
 }
 
-// Captured inputs own source selection. Standalone toolchain users retain the
-// explicit non-workspace profile used by the native compiler fixtures.
+// Captured inputs own source selection. Other users inherit ordinary Go
+// workspace discovery.
 func (t Toolchain) environment() []string {
 	if t.Env != nil {
 		return append([]string(nil), t.Env...)
 	}
-	return append(os.Environ(), "GOWORK=off")
+	return os.Environ()
 }
 func (t Toolchain) envValue(name string) string {
 	env := t.environment()

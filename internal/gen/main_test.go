@@ -8,14 +8,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	// Every go command these tests start runs in a sandbox or a fixture module
-	// outside this checkout's workspace, so it has to see that module's own
-	// go.mod. Set once for the process because t.Setenv forbids t.Parallel, and
-	// the toolchain-heavy tests here are only affordable run in parallel.
-	// Fresh cache-process probes intentionally inherit the caller workspace.
-	if os.Getenv("SKGO_CACHE_TEST_CONFIG") == "" {
-		os.Setenv("GOWORK", "off")
-	}
 	// Every go command and skgo binary these tests start is one of a dozen
 	// running at once. Left at one P per core, each spends most of its CPU in
 	// the kernel on runtime threads with nothing to do: a single `go generate`

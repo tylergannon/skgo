@@ -99,7 +99,7 @@ func build(tag, sha string) error {
 	// Build a released module, rather than a checkout reporting (devel). Isolate
 	// this module cache so a retry cannot pick up an earlier use of the same tag.
 	// Other dependencies use the normal proxy and sum database.
-	env := []string{"GOWORK=off", "GOBIN=" + stage, "GOMODCACHE=" + filepath.Join(stage, "mod"), "GOPRIVATE=" + module, "CGO_ENABLED=1", "GOTOOLCHAIN=go1.27.2", "GOFLAGS=" + os.Getenv("GOFLAGS") + " -modcacherw"}
+	env := []string{"GOBIN=" + stage, "GOMODCACHE=" + filepath.Join(stage, "mod"), "GOPRIVATE=" + module, "CGO_ENABLED=1", "GOTOOLCHAIN=go1.27.2", "GOFLAGS=" + os.Getenv("GOFLAGS") + " -modcacherw"}
 	// The download response binds the module used by go install to the qualified
 	// commit, even if an administrator moved the candidate tag meanwhile.
 	data, err := output(env, "go", "mod", "download", "-json", module+"@"+tag)

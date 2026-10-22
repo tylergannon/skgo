@@ -61,8 +61,6 @@ jobs:
             plugins/native-shell/go.sum
       - name: Native plugin Go contracts
         working-directory: plugins/native-shell
-        env:
-          GOWORK: 'off'
         run: go test ./...
 
   compiler-and-wire:
@@ -90,8 +88,6 @@ jobs:
           cache: false
       - name: Generated Swift and SDK wire regression tests
         working-directory: plugins/native-shell
-        env:
-          GOWORK: 'off'
         run: go test -tags skgo_qualification -count=1 ./...
       - name: Zig SDK unit tests and Swift link library
         working-directory: plugins/native-shell/sdk/core

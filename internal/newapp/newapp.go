@@ -740,7 +740,6 @@ func currentSkgoVersion() (string, error) {
 	}
 	cmd := exec.Command("go", "list", "-m", "-f", "{{.Version}}", skgoModule+"@latest")
 	cmd.Dir = os.TempDir()
-	cmd.Env = append(os.Environ(), "GOWORK=off")
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("skgo: this checkout does not identify a release and the Go proxy lookup failed: %w; pass --skgo-version when qualifying a checkout", err)
