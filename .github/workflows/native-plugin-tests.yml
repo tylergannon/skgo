@@ -95,4 +95,9 @@ jobs:
         run: mise exec -- zig build -j4 test library
       - name: Swift SDK unit tests
         working-directory: plugins/native-shell/sdk/swift
-        run: swift test --jobs 4
+        run: |
+          args=(--jobs 4)
+          # CLT's Swift build engine omits its shipped Testing macro plug-in.
+          plugin="$(dirname "$(dirname "$(xcrun --find swiftc)")")/lib/swift/host/plugins/testing/libTestingMacros.dylib"
+          if [[ -f "$plugin" ]]; then args+=(-Xswiftc -load-plugin-library -Xswiftc "$plugin"); fi
+          swift test "${args[@]}"

@@ -19,7 +19,7 @@ jobs:
   checks:
     name: Go contracts and Conventional Commit
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || 'skgo-managed-linux' }}
     timeout-minutes: 20
     outputs:
       native: ${{ steps.changes.outputs.native }}
@@ -95,7 +95,7 @@ jobs:
   svelte-check:
     name: Svelte type check of example/web
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || 'skgo-managed-linux' }}
     timeout-minutes: 15
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}

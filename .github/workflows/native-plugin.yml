@@ -25,7 +25,7 @@ permissions:
 jobs:
   candidate:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: [self-hosted, macOS, ARM64, skgo-release, amritanandamayi]
+    runs-on: skgo-managed-macos
     timeout-minutes: 30
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -50,7 +50,12 @@ jobs:
         run: mise exec -- zig build -j4 test library
       - name: Swift SDK unit tests
         working-directory: plugins/native-shell/sdk/swift
-        run: swift test --jobs 4
+        run: |
+          args=(--jobs 4)
+          # CLT's Swift build engine omits its shipped Testing macro plug-in.
+          plugin="$(dirname "$(dirname "$(xcrun --find swiftc)")")/lib/swift/host/plugins/testing/libTestingMacros.dylib"
+          if [[ -f "$plugin" ]]; then args+=(-Xswiftc -load-plugin-library -Xswiftc "$plugin"); fi
+          swift test "${args[@]}"
       - name: Fetch the official executable and build against its identity
         id: candidate
         env:
@@ -85,7 +90,7 @@ jobs:
   publish:
     # Publish the requested candidate bytes without recompiling them.
     if: github.event_name == 'repository_dispatch'
-    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
+    runs-on: skgo-managed-linux
     environment: release
     timeout-minutes: 10
     permissions:

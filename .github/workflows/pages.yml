@@ -22,7 +22,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
+    runs-on: skgo-managed-linux
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
