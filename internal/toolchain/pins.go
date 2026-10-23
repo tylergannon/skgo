@@ -19,7 +19,7 @@ const Kit = "3.1.0"
 const Svelte = "5.57.2"
 
 // Go is the Go release the module declares and native development requires.
-const Go = "1.27.2"
+const Go = "1.27.3"
 
 // Node is the range of Node releases the frontend tool environment accepts:
 // the engines range the VitePlus release declares. It is narrower than Kit's
