@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -96,6 +97,11 @@ func setupSigning() (err error) {
 			return err
 		}
 	}
+	// codesign requires the identity's keychain on the user search list even
+	// with --keychain. Deleting the temporary keychain removes this entry.
+	if err = addSigningKeychain(keychain); err != nil {
+		return err
+	}
 	identities, err := output(nil, "security", "find-identity", "-v", "-p", "codesigning", keychain)
 	if err != nil {
 		return err
@@ -116,6 +122,27 @@ func setupSigning() (err error) {
 	}
 	return githubEnv(map[string]string{"MACOS_SIGNING_IDENTITY": string(matches[0][1]), "MACOS_NOTARY_PROFILE": profile})
 }
+func addSigningKeychain(keychain string) error {
+	data, err := output(nil, "security", "list-keychains", "-d", "user")
+	if err != nil {
+		return err
+	}
+	args := []string{"list-keychains", "-d", "user", "-s", keychain}
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		path, err := strconv.Unquote(strings.TrimSpace(line))
+		if err != nil {
+			return fmt.Errorf("read keychain search list: %w", err)
+		}
+		if path != keychain {
+			args = append(args, path)
+		}
+	}
+	return quiet("security", args...)
+}
+
 func cleanupSigning() error {
 	dir := os.Getenv("SKGO_CI_SIGNING_DIR")
 	if dir == "" {

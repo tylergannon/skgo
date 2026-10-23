@@ -97,7 +97,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ needs.source.outputs.candidate }}
+          # The helper comes from this workflow revision. Its build command
+          # still verifies the released module against the exact candidate SHA.
+          ref: ${{ github.sha }}
       - uses: actions/setup-go@v7
         with:
           go-version: '1.27.2'
