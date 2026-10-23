@@ -22,6 +22,9 @@ func TestMain(m *testing.M) {
 		if name == "security" && len(args) > 0 && args[0] == "find-identity" {
 			_, _ = os.Stdout.WriteString(`1) 123 "Developer ID Application: Fixture (TEAM)"`)
 		}
+		if name == "security" && len(args) == 3 && args[0] == "list-keychains" {
+			_, _ = os.Stdout.WriteString(os.Getenv("SKGO_FAKE_KEYCHAINS"))
+		}
 		if name == "xcrun" && len(args) > 1 && args[1] == "submit" {
 			_, _ = os.Stdout.WriteString(`{"status":"` + os.Getenv("SKGO_FAKE_NOTARY_STATUS") + `","id":"fixture-submission"}`)
 		}
@@ -123,6 +126,7 @@ func TestSigningFailureDeletesCredentials(t *testing.T) {
 		t.Setenv(name, "fixture")
 	}
 	t.Setenv("APPLE_TEAM_ID", "TEAM")
+	t.Setenv("SKGO_FAKE_KEYCHAINS", "    \"/Users/Fixture User/Library/Keychains/login.keychain-db\"\n    \"/Library/Keychains/System.keychain\"\n")
 	t.Setenv("SKGO_FAKE_FAIL", "xcrun")
 	if err := setupSigning(); err == nil {
 		t.Fatal("credential storage failure ignored")
@@ -142,5 +146,8 @@ func TestSigningFailureDeletesCredentials(t *testing.T) {
 	}
 	if !strings.Contains(string(calls), `"delete-keychain"`) {
 		t.Fatal("temporary keychain not deleted after failure")
+	}
+	if !strings.Contains(string(calls), `"/Users/Fixture User/Library/Keychains/login.keychain-db","/Library/Keychains/System.keychain"`) {
+		t.Fatal("existing keychain search paths were not preserved")
 	}
 }
