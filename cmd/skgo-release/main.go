@@ -99,7 +99,7 @@ func build(tag, sha string) error {
 	// Build a released module, rather than a checkout reporting (devel). Isolate
 	// this module cache so a retry cannot pick up an earlier use of the same tag.
 	// Other dependencies use the normal proxy and sum database.
-	env := []string{"GOBIN=" + stage, "GOMODCACHE=" + filepath.Join(stage, "mod"), "GOPRIVATE=" + module, "CGO_ENABLED=1", "GOTOOLCHAIN=go1.27.2", "GOFLAGS=" + os.Getenv("GOFLAGS") + " -modcacherw"}
+	env := []string{"GOBIN=" + stage, "GOMODCACHE=" + filepath.Join(stage, "mod"), "GOPRIVATE=" + module, "CGO_ENABLED=1", "GOTOOLCHAIN=go1.27.3", "GOFLAGS=" + os.Getenv("GOFLAGS") + " -modcacherw"}
 	// The download response binds the module used by go install to the qualified
 	// commit, even if an administrator moved the candidate tag meanwhile.
 	data, err := output(env, "go", "mod", "download", "-json", module+"@"+tag)
@@ -124,7 +124,7 @@ func build(tag, sha string) error {
 	if err != nil {
 		return err
 	}
-	if info.Main.Path != module || info.Main.Version != tag || info.GoVersion != "go1.27.2" {
+	if info.Main.Path != module || info.Main.Version != tag || info.GoVersion != "go1.27.3" {
 		return fmt.Errorf("packaged CLI has unexpected module/toolchain identity: %v", info)
 	}
 	if err = command(nil, binary, "buildinfo"); err != nil {

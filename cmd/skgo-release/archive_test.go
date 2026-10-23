@@ -83,7 +83,7 @@ func TestPackagedCLI(t *testing.T) {
 	if err := json.Unmarshal(call(nil, "buildinfo", "--json"), &info); err != nil {
 		t.Fatal(err)
 	}
-	if info.SkgoVersion != tag || info.Build.Main.Version != tag || info.Build.GoVersion != "go1.27.2" {
+	if info.SkgoVersion != tag || info.Build.Main.Version != tag || info.Build.GoVersion != "go1.27.3" {
 		t.Fatalf("unexpected release identity: %+v", info)
 	}
 	source := filepath.Join(dir, "source")
@@ -101,7 +101,7 @@ func TestPackagedCLI(t *testing.T) {
 	if err = os.WriteFile(filepath.Join(source, "main.go"), data, 0644); err != nil {
 		t.Fatal(err)
 	}
-	mod := "module example.test/releaseplugin\n\ngo 1.27.2\n\nrequire github.com/tylergannon/skgo " + tag + "\n"
+	mod := "module example.test/releaseplugin\n\ngo 1.27.3\n\nrequire github.com/tylergannon/skgo " + tag + "\n"
 	if err = os.WriteFile(filepath.Join(source, "go.mod"), []byte(mod), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestPackagedCLI(t *testing.T) {
 	if help := call(env, "--help"); !strings.Contains(string(help), "Write a configured receipt") {
 		t.Fatalf("packaged CLI did not load plugin: %s", help)
 	}
-	if err = os.WriteFile(filepath.Join(consumer, "go.mod"), []byte("module example.test/releaseconsumer\n\ngo 1.27.2\n"), 0644); err != nil {
+	if err = os.WriteFile(filepath.Join(consumer, "go.mod"), []byte("module example.test/releaseconsumer\n\ngo 1.27.3\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	call(env, "add", "--root", consumer, "--name", "Release", "--set", "text=release-fixture", "receipt")

@@ -26,7 +26,7 @@ func TestGeneratedApplicationShutdown(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
-	if err := writeGoFiles(project{Dir: dir, Module: "example.com/shutdown", BindingsImport: "example.com/shutdown/internal/skgo", GoVersion: "1.27.2", SkgoVersion: "v0.0.0", SkgoReplace: repo, App: "shutdown", Origin: "http://127.0.0.1:8080", OriginHostPort: "127.0.0.1:8080"}); err != nil {
+	if err := writeGoFiles(project{Dir: dir, Module: "example.com/shutdown", BindingsImport: "example.com/shutdown/internal/skgo", GoVersion: "1.27.3", SkgoVersion: "v0.0.0", SkgoReplace: repo, App: "shutdown", Origin: "http://127.0.0.1:8080", OriginHostPort: "127.0.0.1:8080"}); err != nil {
 		t.Fatal(err)
 	}
 	writeFiles(t, dir, map[string]string{"server.go": shutdownHandler})

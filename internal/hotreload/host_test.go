@@ -58,7 +58,7 @@ func TestCapturedNativeHTTPHost(t *testing.T) {
 	if err := os.MkdirAll(shared, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(shared, "go.mod"), []byte("module example.com/shared\ngo 1.27.2\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(shared, "go.mod"), []byte("module example.com/shared\ngo 1.27.3\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(shared, "shared.go"), []byte("package shared\nconst Receipt=\"workspace-912\"\n"), 0644); err != nil {
@@ -68,14 +68,14 @@ func TestCapturedNativeHTTPHost(t *testing.T) {
 	if err := os.MkdirAll(replacementDependency, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(replacementDependency, "go.mod"), []byte("module example.com/replaced\ngo 1.27.2\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(replacementDependency, "go.mod"), []byte("module example.com/replaced\ngo 1.27.3\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(replacementDependency, "value.go"), []byte("package replaced\nconst Receipt=\"workspace-replace-314\"\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	workspace := filepath.Join(work, "go.work")
-	if err := os.WriteFile(workspace, []byte("go 1.27.2\nuse (\n./app\n./shared\n)\nreplace example.com/replaced v0.0.0 => ./replacement\n"), 0644); err != nil {
+	if err := os.WriteFile(workspace, []byte("go 1.27.3\nuse (\n./app\n./shared\n)\nreplace example.com/replaced v0.0.0 => ./replacement\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("GOWORK", workspace)
