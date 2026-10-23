@@ -3,6 +3,7 @@ name: Native plugin tests
 # A nested Go module is deliberately outside core's ./... and release gates.
 # It still runs its own contracts on every relevant development revision.
 on:
+  workflow_dispatch:
   push:
     branches-ignore: [main]
     tags-ignore: ['**']
@@ -47,8 +48,8 @@ permissions:
 
 jobs:
   contracts:
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || 'skgo-managed-linux' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -65,8 +66,8 @@ jobs:
 
   compiler-and-wire:
     name: Native compiler and wire witnesses
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: [self-hosted, macOS, ARM64, skgo-release, amritanandamayi]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ${{ github.event_name == 'pull_request' && 'macos-26' || 'skgo-managed-macos' }}
     timeout-minutes: 20
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -94,4 +95,9 @@ jobs:
         run: mise exec -- zig build -j4 test library
       - name: Swift SDK unit tests
         working-directory: plugins/native-shell/sdk/swift
-        run: swift test --jobs 4
+        run: |
+          args=(--jobs 4)
+          # CLT's Swift build engine omits its shipped Testing macro plug-in.
+          plugin="$(dirname "$(dirname "$(xcrun --find swiftc)")")/lib/swift/host/plugins/testing/libTestingMacros.dylib"
+          if [[ -f "$plugin" ]]; then args+=(-Xswiftc -load-plugin-library -Xswiftc "$plugin"); fi
+          swift test "${args[@]}"

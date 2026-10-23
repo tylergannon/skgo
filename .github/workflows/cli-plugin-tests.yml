@@ -1,5 +1,6 @@
 name: CLI plugin unit tests
 on:
+  workflow_dispatch:
   push:
     branches-ignore: [main]
     tags-ignore: ['**']
@@ -26,8 +27,8 @@ permissions:
   contents: read
 jobs:
   units:
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || 'skgo-managed-linux' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7

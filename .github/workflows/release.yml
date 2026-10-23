@@ -10,6 +10,10 @@ on:
       tag:
         description: Existing version tag to publish again
         required: true
+      publish:
+        description: Publish packages and releases after building (disable to qualify runner changes)
+        type: boolean
+        default: true
 
 concurrency:
   group: core-release
@@ -22,7 +26,7 @@ permissions:
 jobs:
   source:
     name: Read the version tag
-    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
+    runs-on: skgo-managed-linux
     outputs:
       version: ${{ steps.tag.outputs.version }}
       candidate: ${{ steps.tag.outputs.candidate }}
@@ -51,7 +55,7 @@ jobs:
       matrix:
         include:
           - arch: amd64
-            runner: [self-hosted, Linux, X64, skgo-release, bob]
+            runner: skgo-managed-linux
           - arch: arm64
             runner: [self-hosted, Linux, ARM64, skgo-release, bob]
     runs-on: ${{ matrix.runner }}
@@ -84,7 +88,7 @@ jobs:
   macos-cli:
     name: Signed and notarized macOS CLI
     needs: source
-    runs-on: [self-hosted, macOS, ARM64, skgo-release, amritanandamayi]
+    runs-on: skgo-managed-macos
     environment: release
     timeout-minutes: 40
     env:
@@ -138,7 +142,7 @@ jobs:
   adapter-package:
     name: Prepare @skgo/sveltekit-adapter on Bob
     needs: source
-    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
+    runs-on: skgo-managed-linux
     timeout-minutes: 25
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -180,6 +184,7 @@ jobs:
           retention-days: 2
 
   adapter-npm:
+    if: github.event_name != 'workflow_dispatch' || inputs.publish
     name: Publish @skgo/sveltekit-adapter
     needs: [source, linux-cli, macos-cli, adapter-package]
     # npm trusted publishing accepts GitHub-hosted runners only. Publish the
@@ -253,7 +258,7 @@ jobs:
   sv-package:
     name: Prepare @skgo/sv on Bob
     needs: source
-    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
+    runs-on: skgo-managed-linux
     timeout-minutes: 15
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
@@ -295,6 +300,7 @@ jobs:
           retention-days: 2
 
   sv-npm:
+    if: github.event_name != 'workflow_dispatch' || inputs.publish
     name: Publish @skgo/sv
     needs: [source, linux-cli, macos-cli, sv-package]
     # npm trusted publishing accepts GitHub-hosted runners only. Consume
@@ -321,9 +327,10 @@ jobs:
 
 
   publish:
+    if: github.event_name != 'workflow_dispatch' || inputs.publish
     name: Publish GitHub Release and Homebrew cask
     needs: [source, linux-cli, macos-cli, adapter-npm, sv-package, sv-npm]
-    runs-on: [self-hosted, Linux, X64, skgo-release, bob]
+    runs-on: skgo-managed-linux
     environment: release
     timeout-minutes: 15
     permissions:
