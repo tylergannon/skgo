@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version-file: plugins/cli/go.mod
+          go-version: stable
           cache: false
           cache-dependency-path: plugins/cli/go.sum
       - name: Generator, JSON and HTTP transport unit tests
