@@ -8,3 +8,4 @@ friction: Root checkout installed Kit reported 3.0.0 despite checked-in 3.1.0 pi
 decision: Direct imports through [foo]/[bar=nice], groups, optional/rest parameters pass under installed Zig 0.17.0. No symlinks required.
 decision: Zig public-C-API embedding of macOS JavaScriptCore evaluates modern JS successfully. This is a basic embedding probe, not SKGO renderer or portability proof.
 decision: Public HTTP/2 can terminate at an HTTP reverse proxy with HTTP/1.1 upstream; distinguish this from raw TLS termination. Outbound HTTPS remains necessary even if inbound TLS is deferred.
+decision: User requested a deep written investigation handoff and branch push to continue a voice conversation from a laptop after latency through the remote computer disrupted discussion. Added conversation state, source inventory, primary references, commands/results and untested boundaries; no implementation expansion was authorized.

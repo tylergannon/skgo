@@ -2,6 +2,8 @@
 
 Assessment: 2026-10-24. SKGO source: `618f467b`; Go 1.27.3; freshly installed pinned Kit 3.1.0 and Svelte 5.57.2; installed Zig 0.17.0 on macOS arm64. This is research and small capability probes, not an implemented port or a build-performance comparison.
 
+For continuation, read the [conversation handoff](HANDOFF.md) and [complete investigation trail](investigation.md). They preserve the user corrections, source map, exact checks, limitations, reproduction commands and open questions.
+
 **A Zig implementation is technically credible. The main work is preserving SKGO's contracts while replacing its Go runtime and language tooling. Bracketed route imports and HTTP/2 are not blockers.** The strongest simplification comes from combining compiler reflection with an ordinary restart-based development server. Production JavaScript embedding is the largest external dependency decision.
 
 The intended meaning of “in Zig” here is that Zig owns the process, application handlers, and native framework. Svelte, Kit, browser JavaScript, and build-time TypeScript remain. JavaScriptCore itself is C++, so that option preserves a native application architecture but not a literally all-Zig implementation.
@@ -53,7 +55,7 @@ Current SKGO's `internal/gen/links.go` instead creates Go-nameable directory sym
 | Check native handler signatures and supported wire types | Compiler reflection and compile errors |
 | Specialize request decoding, result encoding, validators, and dispatch wrappers | Generic Zig code specialized by comptime |
 | Construct typed handler tables from an explicit registry | Comptime |
-| Traverse reachable native types into one wire schema model | Comptime-assisted library; emit through a host executable when external files are needed |
+| Traverse reachable native types into one wire schema model | Comptime-assisted library used by the build program or a configured host generator |
 | Discover added, renamed, or removed `.remote.zig`, server-load and endpoint files | Build program/generator doing filesystem I/O |
 | Produce physical `.remote.ts`, `+page.server.ts`, endpoint stubs, declarations, hooks/config bridges | `build.zig` WriteFile steps fed by comptime-generated contents, or a host generator executable for a more complex application graph |
 | Compile Svelte/TypeScript, evaluate Vite configuration, discover Kit manifests/identities and prerender | Kit/Vite plus the adapter |
@@ -67,6 +69,8 @@ Comptime itself cannot perform arbitrary filesystem writes or execute Vite. The 
 There is a staging concern: compiling a metadata emitter that imports full application modules can accidentally require application libraries, target-specific code, or frontend build artifacts. Keep the metadata/native-handler dependency graph independent of embedded production assets; arrange host-versus-target compilation explicitly. Avoid a cycle in which generating frontend types requires compiling a server that embeds the frontend output being generated.
 
 Comptime removes generated native source and external type-checker machinery where appropriate. It does not remove the semantics of omitted versus null values, safe integer transport, strings versus byte arrays, error responses, custom transported types, promise placeholders, or devalue references. Those still require implementation.
+
+Current SKGO already obtains type information through Go's compiler libraries. The opportunity is to move native specialization into ordinary generic/compiler execution, reducing the external analysis and generated-native-source pipeline; it is not a replacement for a hand-written Go parser/type checker, because SKGO does not maintain one.
 
 **JavaScriptCore is a credible first candidate**
 
