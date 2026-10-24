@@ -1,2 +1,2 @@
 self-hosted-runner:
-  labels: [skgo-release, bob, amritanandamayi, skgo-managed-linux, skgo-managed-macos]
+  labels: [skgo-release, bob, amritanandamayi, skgo-managed-linux, skgo-managed-linux-arm64, skgo-managed-macos]

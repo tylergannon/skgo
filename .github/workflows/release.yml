@@ -57,7 +57,7 @@ jobs:
           - arch: amd64
             runner: skgo-managed-linux
           - arch: arm64
-            runner: [self-hosted, Linux, ARM64, skgo-release, bob]
+            runner: skgo-managed-linux-arm64
     runs-on: ${{ matrix.runner }}
     # ARM64 runs under QEMU on Bob; its Go compiler and plugin test execute
     # there as ARM64 programs rather than dropping the packaged-CLI witness.
