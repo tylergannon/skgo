@@ -29,6 +29,13 @@ func TestGeneratedCSharpModels(t *testing.T) {
 	}
 	defs = append(defs, tg.Definition{Name: odd, Type: &tg.Object{Fields: fields}})
 	roots = append(roots, &tg.Ref{Target: odd})
+	escapes := tg.Name{PackagePath: "fixture", Name: "Escapes"}
+	defs = append(defs, tg.Definition{Name: escapes, Type: &tg.Enum{GoType: escapes, Kind: tg.String, Members: []tg.EnumMember{
+		{Name: "Control", Value: constant.MakeString("\x01a")},
+		{Name: "NUL", Value: constant.MakeString("\x00face")},
+		{Name: "Text", Value: constant.MakeString("café 😀\\n")},
+	}}})
+	roots = append(roots, &tg.Ref{Target: escapes})
 
 	got, err := Generate(defs, roots, nil)
 	if err != nil {
@@ -60,7 +67,12 @@ try { Wire.EncodeNumber(double.NaN,false); throw new Exception("Accepted NaN"); 
 Check(ModelCodec.DecodeRoot1(JsonValue.Create("one")) == AliasEnum.Alias && AliasEnum.Alias == AliasEnum.AliasEnum2);
 var odd = ModelCodec.DecodeRoot2(JsonNode.Parse("""{"OddNames":"one","GetType":"two","class":"three","a-b":"four","a_b":"five"}"""));
 Check(odd.OddNames2 == "one" && odd.GetType2 == "two" && odd.@class == "three" && odd.a_b == "four" && odd.a_b2 == "five");
-Console.WriteLine("models: omission/null, closed objects, enums, unions, recursive models, arrays, safe numbers PASS");
+Check(ModelCodec.EncodeRoot3(Escapes.Control)!.GetValue<string>() == "\u0001a");
+Check(ModelCodec.DecodeRoot3(JsonValue.Create("\u0001a")) == Escapes.Control);
+Check(ModelCodec.EncodeRoot3(Escapes.NUL)!.GetValue<string>() == "\u0000face");
+Check(ModelCodec.DecodeRoot3(JsonValue.Create("\u0000face")) == Escapes.NUL);
+Check(ModelCodec.EncodeRoot3(Escapes.Text)!.GetValue<string>() == "café 😀\\n");
+Console.WriteLine("models: omission/null, closed objects, enums including literal control characters, unions, recursive models, arrays, safe numbers PASS");
 `}
 	for name, content := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0600); err != nil {
