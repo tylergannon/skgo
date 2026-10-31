@@ -31,6 +31,36 @@ executable as `--host`, `--version-symbol main.SkgoVersion`, and an explicit
 and qualify installed peers. The development coexistence check uses a local
 versioned host, not certification for an already published executable.
 
+## Host choice and remaining scope
+
+The Windows host uses C#/WinUI 3 around WebView2. This retains native controls
+and directly uses the merged C# bindings and shared Zig protocol/cache core.
+The alternative considered in [#442](https://github.com/tylergannon/skgo/issues/442)
+is a Tauri host around the same central Go/SvelteKit service:
+
+| Boundary | C#/WinUI host | Tauri integration requirements |
+| --- | --- | --- |
+| UI and local logic | Native WinUI controls, C# logic and embedded web content | Tauri normally combines a web UI with Rust host logic; additional native controls would need separate integration. |
+| Remote wire and generated models | Existing generated C# models/calls, .NET HTTP transport and Zig/C ABI | Reuse the central Go protocol and potentially Zig/C ABI, but add a Rust client/model projection or an explicit bridge to the C# client. Tauri IPC alone does not implement SKGo's remote wire or retained-query semantics. |
+| Authentication | Application-owned HttpClient credentials; independent page and API origins | Keep credentials in Rust/native logic and define the bridge's allowed callers. A webview message must not implicitly acquire authenticated API access. |
+| Distribution and workflow | Pinned Windows SDK packages, Windows builds and signed MSIX; portable client work on macOS/Linux | Add Rust/Tauri build inputs, native dependency packaging and installer qualification. Tauri offers Windows installer tooling; this repository has no implemented Tauri SDK boundary. |
+
+This comparison is an integration assessment, not a Tauri runtime benchmark.
+The implemented WinUI path fits the requested native-controls-plus-web-content
+shape and reuses the working C# client without adding another language bridge.
+Application authors own credentials, signing and updates in either design.
+See the primary [WinUI documentation](https://learn.microsoft.com/en-us/windows/apps/winui/winui3/),
+[Tauri architecture](https://v2.tauri.app/concept/architecture/) and
+[Tauri Windows distribution guide](https://v2.tauri.app/distribute/windows-installer/).
+
+The Windows origin policy below is implemented and its HTTP loopback navigation
+was exercised on Windows. [#441](https://github.com/tylergannon/skgo/issues/441)
+remains open for Apple origin configuration and its required two-HTTPS-origin
+browser demonstration. Adding both shells proves coexistence; it does not
+qualify Apple navigation or a macOS application build. The independent workflow
+and implementation issues #442 and #443 retain their own acceptance criteria;
+merging this Windows support does not automatically close them.
+
 ## Native shell
 
 Run `skgo plugin windows-shell setup --identity Company.Application` in your
