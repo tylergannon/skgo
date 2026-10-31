@@ -19,3 +19,7 @@ proof: `python3 ephemeral/shared-native-plugin-probe.py` passed on macOS ARM64 /
 friction: An initial local checkout host built with trimpath did not match the builder's versioned dependency identity for templateapi. The successful development probe uses ordinary source-path builds. Official release pairing remains the existing exact-version release qualification, not something this checkout probe substitutes for.
 
 recommendation: Proceed with a small shared native-client module in the same repository and two shell plugin modules, pinning the same shared dependency version for supported pairs. Each plugin owns its platform outputs and bundles needed resources; no third installed plugin, runtime dependency resolver, or shared output directory is necessary. Product code and the C# PR remain unchanged; implementation awaits a request.
+
+decision: The user authorized rewriting issue #444 for a fresh replacement with separate Apple/Windows plugins and a shared native library, keeping version management simple. The successor session should review the old branch for useful behavior and failures; leave it intact during replacement work, then discard it rather than merge it. Updated the issue title/body and independently fetched it to verify an exact match. Existing branch and PR were not changed.
+
+friction: GitHub connector issue updates return integration permission 403; the authenticated gh CLI successfully applied the explicitly authorized issue rewrite, verified afterward through the connector.
