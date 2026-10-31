@@ -3,8 +3,8 @@
 The Zig core owns Kit protocol encoding and decoding. Swift executes HTTP with
 URLSession. The C ABI exchanges byte buffers only; it exposes no value graph.
 
-Build and test from the SDK root (the directory containing `core` and `swift`),
-including an exported SDK copy:
+Export the SDK with `skgo plugin native-shell sdk`, then build and test from
+its root (the directory containing `core` and `swift`):
 
 ```sh
 mise install
@@ -19,6 +19,9 @@ From `plugins/native-shell`, run:
 ```sh
 go test -tags skgo_qualification -count=1 -race ./sdk
 ```
+
+The Zig/C ABI sources are maintained in the shared `native-client` library;
+the exported layout and Swift static linkage remain unchanged.
 
 Native development CI runs the Zig/Swift compiler and wire witnesses on macOS;
 Linux runs the ordinary plugin Go contracts. The former Linux-only Zig wire job

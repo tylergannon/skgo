@@ -1,11 +1,12 @@
 module github.com/tylergannon/skgo/plugins/native-shell
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/tylergannon/devalue/v5 v5.0.0
 	github.com/tylergannon/polytype v1.10.0
 	github.com/tylergannon/skgo v0.41.0
+	github.com/tylergannon/skgo/plugins/native-client v0.1.0
 )
 
 require (
@@ -28,3 +29,5 @@ require (
 )
 
 replace github.com/tylergannon/skgo => ../..
+
+replace github.com/tylergannon/skgo/plugins/native-client => ../native-client

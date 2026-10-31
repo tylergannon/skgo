@@ -28,8 +28,11 @@ import (
 // exercises the real release-shaped install path without special runtime flags.
 // It cannot certify compatibility with an independently published executable.
 func provisionalCapabilityHost(t *testing.T, repo, root string) string {
+	return provisionalCapabilityHostVersion(t, repo, root, "v0.0.0-capability")
+}
+
+func provisionalCapabilityHostVersion(t *testing.T, repo, root, version string) string {
 	t.Helper()
-	const version = "v0.0.0-capability"
 	proxy := filepath.Join(root, "proxy", "github.com", "tylergannon", "skgo", "@v")
 	if err := os.MkdirAll(proxy, 0755); err != nil {
 		t.Fatal(err)
