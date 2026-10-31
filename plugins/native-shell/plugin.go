@@ -1,5 +1,5 @@
 // Native-shell is an independently versioned development-time skgo plugin.
-// It emits Swift remote clients and optionally scaffolds/builds the existing
+// It emits Swift and C# remote clients and optionally scaffolds/builds the existing
 // Apple application shell. Generated applications never load this Go plugin.
 package main
 
@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"path/filepath"
 
+	"github.com/tylergannon/skgo/plugins/native-shell/csharpgen"
 	"github.com/tylergannon/skgo/plugins/native-shell/nativeapp"
 	"github.com/tylergannon/skgo/plugins/native-shell/nativebuild"
 	"github.com/tylergannon/skgo/plugins/native-shell/swiftgen"
@@ -21,7 +22,7 @@ import (
 var Version = "dev"
 var SkgoVersion = "dev"
 
-//go:embed sdk/core/build.zig sdk/core/build.zig.zon sdk/core/src sdk/core/README.md sdk/swift/Package.swift sdk/swift/Sources sdk/swift/Tests sdk/swift/README.md sdk/mise.toml sdk/mise.lock
+//go:embed sdk/core/build.zig sdk/core/build.zig.zon sdk/core/src sdk/core/README.md sdk/swift/Package.swift sdk/swift/Sources sdk/swift/Tests sdk/swift/README.md sdk/csharp/SKGoNative/*.cs sdk/csharp/SKGoNative/*.csproj sdk/csharp/RemoteCLI/*.cs sdk/csharp/RemoteCLI/*.csproj sdk/csharp/README.md sdk/mise.toml sdk/mise.lock
 var resources embed.FS
 
 type nativePlugin struct{}
@@ -32,7 +33,7 @@ func (nativePlugin) Describe() templateapi.Descriptor {
 	d := nativeapp.Plugin(Version).Describe()
 	d.SkgoVersion = SkgoVersion
 	d.Generator = true
-	d.Command = "Generate Swift clients and prepare or build the Apple application shell"
+	d.Command = "Generate Swift or C# clients and prepare or build the Apple application shell"
 	return d
 }
 func (nativePlugin) Apply(ctx context.Context, r templateapi.Request) (templateapi.Result, error) {
@@ -46,7 +47,7 @@ func (nativePlugin) Generate(ctx context.Context, r templateapi.GenerationReques
 	calls := make([]swiftgen.Call, 0, len(r.Model.Remotes))
 	for _, op := range r.Model.Remotes {
 		if op.Kind != "query" && op.Kind != "command" {
-			return templateapi.GenerationResult{}, fmt.Errorf("%s: %s is a %s; native Swift supports ordinary queries and commands", op.Source, op.Selection, op.Kind)
+			return templateapi.GenerationResult{}, fmt.Errorf("%s: %s is a %s; native clients support ordinary queries and commands", op.Source, op.Selection, op.Kind)
 		}
 		if op.Transported {
 			return templateapi.GenerationResult{}, fmt.Errorf("%s: %s uses a custom transport unsupported by the native client", op.Source, op.Selection)
@@ -61,19 +62,37 @@ func (nativePlugin) Generate(ctx context.Context, r templateapi.GenerationReques
 		names[name] = true
 		calls = append(calls, swiftgen.Call{Name: name, ID: op.ID, Kind: op.Kind, Input: op.Input, Output: op.Output})
 	}
-	result, err := swiftgen.Generate(r.Model.Definitions, r.Model.Roots, calls)
+	language := r.Options["language"]
+	if language == "" {
+		language = "swift"
+	}
+	var source []byte
+	var err error
+	switch language {
+	case "swift":
+		result, e := swiftgen.Generate(r.Model.Definitions, r.Model.Roots, calls)
+		source, err = result.Source, e
+	case "csharp":
+		result, e := csharpgen.Generate(r.Model.Definitions, r.Model.Roots, calls)
+		source, err = result.Source, e
+	default:
+		return templateapi.GenerationResult{}, fmt.Errorf("unsupported native language %q; use swift or csharp", language)
+	}
 	if err != nil {
 		return templateapi.GenerationResult{}, err
 	}
 	out := r.Options["out"]
 	if out == "" {
 		out = "native/Generated.swift"
+		if language == "csharp" {
+			out = "native/Generated.cs"
+		}
 	}
-	return templateapi.GenerationResult{Files: []templateapi.GeneratedFile{{Path: out, Content: result.Source}}}, nil
+	return templateapi.GenerationResult{Files: []templateapi.GeneratedFile{{Path: out, Content: source}}}, nil
 }
 func (nativePlugin) RunCommand(ctx context.Context, r templateapi.CommandRequest) error {
 	if len(r.Args) == 0 || r.Args[0] == "help" || r.Args[0] == "-h" || r.Args[0] == "--help" {
-		fmt.Fprintln(r.Stdout, "native-shell commands:\n  setup --bundle-id ID   Create the existing Apple shell explicitly\n  prepare [build flags]  Prepare the Xcode project\n  build [build flags]    Build the native application\n  sdk --out PATH         Copy the Swift/Zig SDK for client-only use\nBuild flags: --platform macos|iphone|simulator --preset NAME --jobs N")
+		fmt.Fprintln(r.Stdout, "native-shell commands:\n  setup --bundle-id ID   Create the existing Apple shell explicitly\n  prepare [build flags]  Prepare the Xcode project\n  build [build flags]    Build the native application\n  sdk --out PATH         Copy the Swift/C#/Zig SDK for client-only use\nBuild flags: --platform macos|iphone|simulator --preset NAME --jobs N")
 		return nil
 	}
 	f := flag.NewFlagSet("native-shell "+r.Args[0], flag.ContinueOnError)
