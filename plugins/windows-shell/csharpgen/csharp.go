@@ -3,7 +3,6 @@ package csharpgen
 
 import (
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"go/constant"
 	"strconv"
@@ -91,11 +90,25 @@ func plain(s string) string {
 }
 func ident(s string) string { return "@" + s }
 func quote(s string) string {
-	// JSON's escapes are also valid C# string escapes. In particular its fixed
-	// width \u0001 keeps a following hex character out of the escape, unlike
-	// Go's \x01 (which C# would greedily extend to as many as four digits).
-	quoted, _ := json.Marshal(s)
-	return string(quoted)
+	// C# accepts fixed-width UTF-16/scalar escapes. Keep source ASCII so even
+	// Unicode source newlines (notably U+0085) stay inside the string literal.
+	var b strings.Builder
+	b.WriteByte('"')
+	for _, r := range s {
+		switch {
+		case r == '"' || r == '\\':
+			b.WriteByte('\\')
+			b.WriteRune(r)
+		case r >= 0x20 && r <= 0x7e:
+			b.WriteRune(r)
+		case r <= 0xffff:
+			fmt.Fprintf(&b, `\u%04x`, r)
+		default:
+			fmt.Fprintf(&b, `\U%08x`, r)
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
 }
 func (m *emitter) allocate(s string) string {
 	s = plain(s)

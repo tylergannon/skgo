@@ -34,6 +34,7 @@ func TestGeneratedCSharpModels(t *testing.T) {
 		{Name: "Control", Value: constant.MakeString("\x01a")},
 		{Name: "NUL", Value: constant.MakeString("\x00face")},
 		{Name: "Text", Value: constant.MakeString("café 😀\\n")},
+		{Name: "Lines", Value: constant.MakeString("\u0085a\u2028b\u2029c\r\n")},
 	}}})
 	roots = append(roots, &tg.Ref{Target: escapes})
 
@@ -72,6 +73,8 @@ Check(ModelCodec.DecodeRoot3(JsonValue.Create("\u0001a")) == Escapes.Control);
 Check(ModelCodec.EncodeRoot3(Escapes.NUL)!.GetValue<string>() == "\u0000face");
 Check(ModelCodec.DecodeRoot3(JsonValue.Create("\u0000face")) == Escapes.NUL);
 Check(ModelCodec.EncodeRoot3(Escapes.Text)!.GetValue<string>() == "café 😀\\n");
+Check(ModelCodec.EncodeRoot3(Escapes.Lines)!.GetValue<string>() == "\u0085a\u2028b\u2029c\r\n");
+Check(ModelCodec.DecodeRoot3(JsonValue.Create("\u0085a\u2028b\u2029c\r\n")) == Escapes.Lines);
 Console.WriteLine("models: omission/null, closed objects, enums including literal control characters, unions, recursive models, arrays, safe numbers PASS");
 `}
 	for name, content := range files {
