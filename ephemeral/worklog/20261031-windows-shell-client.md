@@ -1,0 +1,7 @@
+correction: Issue #444 is the replacement's authority. The failed branch is parts and historical evidence only; leave it and PR #445 unchanged.
+decision: Separate Apple and Windows plugins share the native-client module in this repository, with the same explicit dependency version. No installed core plugin, automatic coordination, or shared build cache.
+decision: Preserve exported Apple SDK layout while moving the authoritative Zig implementation and C ABI header into the shared module. Qualify staged SDK resources, so proof exercises what plugins actually bundle.
+correction: The configured artifact uploader is `gimbal upload-artifact`, per the user. Missing standalone `proof` configuration does not mean artifact upload is unavailable.
+correction: This machine lacked Gimbal's upload configuration too. At the user's request, copied `~/.gimbal/config.json` from `amritanandamayi` with mode 0600; artifact upload then succeeded. No credentials were displayed or added to the worktree.
+friction: The independent review CLI selected Claude but failed because its OAuth session expired. Use an available independent reviewer instead of blocking implementation on unrelated authentication.
+decision: The source installer materializes the full immutable Git tree, including sibling modules. The isolated builder now resolves author-relative dependency replacements against that original source; exact host pins still take precedence.

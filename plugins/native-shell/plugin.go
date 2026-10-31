@@ -5,14 +5,14 @@ package main
 
 import (
 	"context"
-	"embed"
 	"flag"
 	"fmt"
-	"io/fs"
 	"path/filepath"
 
+	"github.com/tylergannon/skgo/plugins/native-client/model"
 	"github.com/tylergannon/skgo/plugins/native-shell/nativeapp"
 	"github.com/tylergannon/skgo/plugins/native-shell/nativebuild"
+	"github.com/tylergannon/skgo/plugins/native-shell/sdk"
 	"github.com/tylergannon/skgo/plugins/native-shell/swiftgen"
 	"github.com/tylergannon/skgo/templateapi"
 )
@@ -20,9 +20,6 @@ import (
 // Version and SkgoVersion are set independently by the native release build.
 var Version = "dev"
 var SkgoVersion = "dev"
-
-//go:embed sdk/core/build.zig sdk/core/build.zig.zon sdk/core/src sdk/core/README.md sdk/swift/Package.swift sdk/swift/Sources sdk/swift/Tests sdk/swift/README.md sdk/mise.toml sdk/mise.lock
-var resources embed.FS
 
 type nativePlugin struct{}
 
@@ -42,24 +39,9 @@ func (nativePlugin) Generate(ctx context.Context, r templateapi.GenerationReques
 	if err := ctx.Err(); err != nil {
 		return templateapi.GenerationResult{}, err
 	}
-	names := map[string]bool{"core": true, "init": true}
-	calls := make([]swiftgen.Call, 0, len(r.Model.Remotes))
-	for _, op := range r.Model.Remotes {
-		if op.Kind != "query" && op.Kind != "command" {
-			return templateapi.GenerationResult{}, fmt.Errorf("%s: %s is a %s; native Swift supports ordinary queries and commands", op.Source, op.Selection, op.Kind)
-		}
-		if op.Transported {
-			return templateapi.GenerationResult{}, fmt.Errorf("%s: %s uses a custom transport unsupported by the native client", op.Source, op.Selection)
-		}
-		if op.Output < 0 || op.Output >= len(r.Model.Roots) || op.Input >= len(r.Model.Roots) {
-			return templateapi.GenerationResult{}, fmt.Errorf("%s: remote model has unprojected types", op.Selection)
-		}
-		name := op.Name
-		for n := 2; names[name]; n++ {
-			name = fmt.Sprintf("%s_%d", op.Name, n)
-		}
-		names[name] = true
-		calls = append(calls, swiftgen.Call{Name: name, ID: op.ID, Kind: op.Kind, Input: op.Input, Output: op.Output})
+	calls, err := model.Calls(r.Model)
+	if err != nil {
+		return templateapi.GenerationResult{}, err
 	}
 	result, err := swiftgen.Generate(r.Model.Definitions, r.Model.Roots, calls)
 	if err != nil {
@@ -102,8 +84,7 @@ func (nativePlugin) RunCommand(ctx context.Context, r templateapi.CommandRequest
 		if f.NArg() != 0 {
 			return fmt.Errorf("build accepts flags only")
 		}
-		sdk, _ := fs.Sub(resources, "sdk")
-		return nativebuild.Build(ctx, nativebuild.Options{Root: r.Project.Root, Project: r.Project, Host: r.Host, SDK: sdk, Platform: *platform, Preset: *preset, Jobs: *jobs, Out: r.Stdout, PrepareOnly: r.Args[0] == "prepare"})
+		return nativebuild.Build(ctx, nativebuild.Options{Root: r.Project.Root, Project: r.Project, Host: r.Host, SDK: sdk.Resources(), Platform: *platform, Preset: *preset, Jobs: *jobs, Out: r.Stdout, PrepareOnly: r.Args[0] == "prepare"})
 	case "sdk":
 		out := f.String("out", "native/SDK", "Project-relative SDK destination")
 		if err := f.Parse(r.Args[1:]); err != nil {
@@ -112,8 +93,7 @@ func (nativePlugin) RunCommand(ctx context.Context, r templateapi.CommandRequest
 		if f.NArg() != 0 || !filepath.IsLocal(*out) || filepath.Clean(*out) == "." {
 			return fmt.Errorf("sdk requires a project-relative destination")
 		}
-		sdk, _ := fs.Sub(resources, "sdk")
-		return nativebuild.CopySDK(sdk, filepath.Join(r.Project.Root, *out))
+		return nativebuild.CopySDK(sdk.Resources(), filepath.Join(r.Project.Root, *out))
 	default:
 		return fmt.Errorf("unknown native-shell command %q", r.Args[0])
 	}

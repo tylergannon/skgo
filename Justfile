@@ -43,7 +43,7 @@ clean:
 
 # go vet, all workspace modules
 vet:
-    go vet ./... ./example/... ./plugins/cli/... ./plugins/cli/example/... ./plugins/native-shell/... ./plugins/native-shell/example/...
+    go vet ./... ./example/... ./plugins/cli/... ./plugins/cli/example/... ./plugins/native-client/... ./plugins/windows-shell/... ./plugins/native-shell/... ./plugins/native-shell/example/...
 
 # Checker tools that can read this Go toolchain's export data, kept in .tools/.
 tools:
@@ -58,7 +58,7 @@ tools:
 # Compiler/process and built-example witnesses are selected explicitly by CI
 # with skgo_qualification; ordinary contracts use Go's normal test cache.
 test *args: tools
-    cd example/web && vp exec go -C ../.. test {{args}} ./... ./example/... ./plugins/cli/... ./plugins/cli/example/... ./plugins/native-shell/... ./plugins/native-shell/example/...
+    cd example/web && vp exec go -C ../.. test {{args}} ./... ./example/... ./plugins/cli/... ./plugins/cli/example/... ./plugins/native-client/... ./plugins/windows-shell/... ./plugins/native-shell/... ./plugins/native-shell/example/...
 
 # the example server, against the built frontend
 serve:

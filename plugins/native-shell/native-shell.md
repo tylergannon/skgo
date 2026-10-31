@@ -10,6 +10,9 @@ order: 3050
 Native-shell is a separately versioned plugin, initially maintained in the
 `plugins/native-shell` module. Core discovers its generator and commands through
 public Go interfaces; core has no static dependency on this implementation.
+The `native-client` library supplies the shared Zig/C ABI and model admission
+rules; C# generation and SDK export belong to the separate `windows-shell`
+plugin. Compatible releases use the same explicit shared-library version.
 Applications load neither the plugin nor its module at runtime. A core release
 alone does not supply a native companion; it becomes available only after the
 separate native qualification and publication.

@@ -11,15 +11,13 @@ import (
 	"unicode"
 
 	tg "github.com/tylergannon/polytype/typegrammar"
+	"github.com/tylergannon/skgo/plugins/native-client/model"
 )
 
 //go:embed runtime.swift
 var runtime string
 
-type Call struct {
-	Name, ID, Kind string
-	Input, Output  int // Input -1 means no argument.
-}
+type Call = model.Call
 type Result struct {
 	Source []byte
 	Names  map[tg.Name]string
@@ -50,7 +48,7 @@ type emitter struct {
 }
 
 func Generate(defs tg.Definitions, roots []tg.Type, calls []Call) (Result, error) {
-	if err := defs.Validate(); err != nil {
+	if err := model.Validate(defs, roots, calls); err != nil {
 		return Result{}, err
 	}
 	m := &emitter{defs: defs, names: map[tg.Name]string{}, used: map[string]bool{}, objects: map[*tg.Object]string{}, enums: map[string]string{}, unions: map[string]string{}}
@@ -197,15 +195,7 @@ func unionKey(u *tg.Union) string {
 
 func (m *emitter) collect(t tg.Type, hint string) error {
 	switch n := t.(type) {
-	case *tg.Scalar:
-		if scalar(n.Kind) == "" {
-			return fmt.Errorf("unsupported scalar %s", n.Kind)
-		}
-	case *tg.Time:
-	case *tg.Ref:
-		if m.names[n.Target] == "" {
-			return fmt.Errorf("unresolved reference %s", n.Target)
-		}
+	case *tg.Scalar, *tg.Time, *tg.Ref:
 	case *tg.Pointer:
 		return m.collect(n.Element, hint+"Value")
 	case *tg.Slice:
@@ -213,14 +203,6 @@ func (m *emitter) collect(t tg.Type, hint string) error {
 	case *tg.Array:
 		return m.collect(n.Element, hint+"Element")
 	case *tg.Enum:
-		if n.Mode != tg.EnumNames && integer(n.Kind) {
-			for _, member := range n.Members {
-				number, ok := constant.Int64Val(member.Value)
-				if !ok || number < -9007199254740991 || number > 9007199254740991 {
-					return fmt.Errorf("%s.%s is outside the JavaScript integer domain", n.GoType, member.Name)
-				}
-			}
-		}
 		if m.enums[enumKey(n)] == "" {
 			name := m.allocate(n.GoType.Name + "Enum")
 			m.enums[enumKey(n)] = name
@@ -263,11 +245,6 @@ func (m *emitter) collect(t tg.Type, hint string) error {
 func (m *emitter) collectUnion(u *tg.Union, hint string) error {
 	if m.unions[unionKey(u)] != "" {
 		return nil
-	}
-	for _, variant := range u.Variants {
-		if m.names[variant.Implementation] == "" {
-			return fmt.Errorf("unresolved union member %s", variant.Implementation)
-		}
 	}
 	name := m.allocate(hint + "Value")
 	m.unions[unionKey(u)] = name
