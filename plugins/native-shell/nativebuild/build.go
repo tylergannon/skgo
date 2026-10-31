@@ -315,7 +315,7 @@ func copySDK(source fs.FS, dest string) error {
 		}
 		rel := path
 		if d.IsDir() {
-			if d.Name() == ".build" || d.Name() == ".zig-cache" || d.Name() == "zig-out" || d.Name() == "zig-pkg" || d.Name() == "node_modules" {
+			if d.Name() == ".build" || d.Name() == ".zig-cache" || d.Name() == "zig-out" || d.Name() == "zig-pkg" || d.Name() == "node_modules" || (strings.HasPrefix(path, "csharp/") && (d.Name() == "bin" || d.Name() == "obj")) {
 				return filepath.SkipDir
 			}
 			target := filepath.Join(dest, rel)
@@ -342,6 +342,10 @@ func copySDK(source fs.FS, dest string) error {
 			return err
 		}
 		if d.IsDir() {
+			rel, _ := filepath.Rel(dest, path)
+			if strings.HasPrefix(filepath.ToSlash(rel), "csharp/") && (d.Name() == "bin" || d.Name() == "obj") {
+				return filepath.SkipDir
+			}
 			switch d.Name() {
 			case ".build", ".zig-cache", "zig-out", "zig-pkg", "node_modules", ".swiftpm":
 				return filepath.SkipDir

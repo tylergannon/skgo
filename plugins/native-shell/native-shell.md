@@ -1,6 +1,6 @@
 ---
 title: Native-shell plugin
-description: Generate Swift clients and build the existing Apple shell with an independently released plugin.
+description: Generate Swift or C# clients and build the existing Apple shell with an independently released plugin.
 division: skgo
 section: Build and deploy
 slug: native-shell
@@ -42,6 +42,14 @@ sources, then build the Zig library and reference the `swift` package from your
 Swift project. The destination is a disposable SDK copy: exporting again replaces
 edits inside it. Keep application changes outside that directory. SDK resources come from the installed artifact, never a core
 source checkout.
+
+For a C# client, set the plugin option `language=csharp`; output defaults to
+`native/Generated.cs` (override with `out`). The SDK export includes the .NET 10
+client and host-native Zig dynamic library build. See the
+[C# SDK instructions](https://github.com/tylergannon/skgo/blob/main/plugins/native-shell/sdk/csharp/README.md)
+for application-owned HTTP configuration, retained queries, model restrictions,
+and the running console witness. C# applications run directly on macOS or Linux;
+Windows loading and packaging remain deferred. Swift remains the default.
 
 For the existing bundled-Go shell, explicitly run
 `skgo plugin native-shell setup --bundle-id dev.example.notes`.

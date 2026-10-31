@@ -42,3 +42,7 @@ plugins/native-shell/example/web/build/*
 
 # Task-local executables.
 .local/
+
+# .NET compiler output.
+plugins/native-shell/sdk/csharp/**/bin/
+plugins/native-shell/sdk/csharp/**/obj/

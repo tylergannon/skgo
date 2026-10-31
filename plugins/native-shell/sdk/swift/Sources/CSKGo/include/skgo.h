@@ -14,7 +14,7 @@ typedef struct { uint32_t kind, status; SKBuffer value, message; } SKReply;
 // Arguments/results are finite-model JSON, not the remote wire format.
 // A zero-length argument/value means omitted/undefined, distinct from JSON null.
 uint32_t sk_prepare(SKBytes origin, SKBytes base, SKBytes id, uint32_t command, SKBytes argument, SKBytes refreshes, SKRequest *);
-// Cache contexts are private to the Swift client implementation. Query keys and
+// Cache contexts are private to each host client implementation. Query keys and
 // values cross as bytes; tickets are scalar completion identifiers, not objects.
 // All operations, including reads and release, require exclusive access.
 // refreshes/requested are JSON arrays of canonical key strings. A serial of 0
