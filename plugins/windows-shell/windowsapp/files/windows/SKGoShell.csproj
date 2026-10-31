@@ -22,6 +22,7 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.4" />
     <ProjectReference Include="SDK/csharp/SKGoNative/SKGoNative.csproj" />
     <Content Include="native/bin/skgo_native_core_shared.dll" Link="skgo_native_core_shared.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="native/skgo-application.exe" Link="skgo-application.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('host/main.go')" />
     <Content Include="Assets/*.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

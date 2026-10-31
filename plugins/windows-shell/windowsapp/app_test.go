@@ -3,6 +3,7 @@ package windowsapp_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/tylergannon/skgo/plugins/windows-shell/windowsapp"
@@ -44,6 +45,21 @@ func TestSetupPreservesApplicationAndRejectsConflicts(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(other, "windows/App.xaml")); !os.IsNotExist(err) {
 		t.Fatal("partial write before conflict")
+	}
+}
+
+func TestApplicationHostUsesTheResolvedModule(t *testing.T) {
+	root := t.TempDir()
+	_, err := windowsapp.Apply(t.Context(), templateapi.Request{Addon: "windows-app", Project: templateapi.Project{Root: root, Module: "example.test/fresh-app"}, Options: map[string]string{"identity": "Example.Fresh"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(root, "windows/host/main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `app "example.test/fresh-app"`) || !strings.Contains(string(b), `"example.test/fresh-app/web"`) || strings.Contains(string(b), "{{") {
+		t.Fatalf("unresolved application imports:\n%s", b)
 	}
 }
 

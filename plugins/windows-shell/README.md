@@ -41,21 +41,33 @@ scripts. Setup checks for conflicts before writing and preserves authored files
 on repeat calls with the same identity. Generation owns only `Generated.cs`;
 it does not rewrite the view, project, manifest, or application scripts.
 
+With the matching `native-shell` plugin installed, the same application can also
+run `skgo add --set bundle-id=com.company.application native-app`. The Apple
+shell lives under `native/`; the Windows shell lives under `windows/`. Transfer
+both with the application. The Windows build compiles its own Go host and WinUI
+project without invoking the Apple build.
+
 On macOS or Linux, run `skgo plugin windows-shell prepare`. This exports the
 pinned SDK and cross-compiles its Windows x64 DLL using mise and Zig 0.17.0.
 Run `mise install` in the exported `windows/SDK` first if the pinned Zig toolchain
 is unavailable. Preparation does not compile the WinUI project or start a Go
 server. The generated app does not load a Go plugin.
 
-Transfer `windows/` to the Windows machine, including the ignored `SDK/` and
-`native/` directories. Exclude `bin/`, `obj/`, `build/` and compiler caches.
-Git alone does not transfer the ignored SDK or DLL. Use SSH/SFTP or your existing
-file-transfer route; Windows and development-machine filesystems are separate.
+Build the application frontend with `skgo build` before transferring it. A fresh
+`skgo new` already builds its frontend. Transfer the whole application, including
+`web/build/`, the generated Go link tree, `windows/SDK/` and `windows/native/`.
+Materialize directory links when the transfer cannot preserve them. Exclude
+`node_modules`, .NET `bin/` and `obj/`, native build outputs and compiler caches;
+keep the prepared DLL in `windows/native/bin/`. Git alone does not transfer the
+ignored build resources. For an offline Go build, run `go mod vendor` before
+transfer and include `vendor/`. Use SSH/SFTP or your existing file-transfer route;
+Windows and development-machine filesystems are separate.
 
 On Windows 11 x64, install .NET SDK 10 and Microsoft's winapp CLI (tested with
 10.0.403 and 0.7.1). The project pins WindowsAppSDK 2.6.4 and Windows SDK
 BuildTools 10.0.28000.2957; NuGet restores their build tools. The C# path does
-not require Visual Studio. WebView2 also requires the Microsoft Edge WebView2
+not require Visual Studio. Go must also be available: the script compiles
+`windows/host` as `skgo-application.exe` and copies it beside the shell. WebView2 requires the Microsoft Edge WebView2
 Runtime on the target. Run `powershell -ExecutionPolicy Bypass -File
 windows/build.ps1`, or add `-Action Run` from an interactive desktop session.
 Use `-Configuration Release` for a release build. PowerShell scripts check native
@@ -77,7 +89,16 @@ viewer. A successful compilation is not a UI demonstration.
 
 ## Application boundaries
 
-`ApplicationView.cs` owns the native controls. Reference the generated
+`ApplicationView.cs` owns the native controls. Its default starts the bundled Go
+application on a dynamically assigned loopback port and opens that origin in
+WebView2. The server serves this application's built SvelteKit frontend and Go
+handlers. A readiness line provides the actual origin; no fixed port or separate
+server launch is needed. Closing the window closes the child's stdin lifetime
+pipe, including when the shell process terminates unexpectedly. Normal disposal
+also waits for shutdown and kills an unresponsive child.
+
+Set `SKGO_PAGE_URL` to use an external page without starting the bundled server,
+or supply your own application view for a client-only consumer. Reference the generated
 `GeneratedRemote.NativeAPI` with the shared SDK's `RemoteClient` and an
 application-owned `HttpClient` configured with `AllowAutoRedirect=false`.
 The native API origin and the WebView's `WebOptions.InitialPage` are independent.

@@ -8,6 +8,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"go/format"
 	"image"
 	"image/color"
 	"image/png"
@@ -17,6 +18,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"text/template"
 
 	"github.com/tylergannon/skgo/templateapi"
 )
@@ -47,7 +49,31 @@ func Apply(ctx context.Context, r templateapi.Request) (result templateapi.Resul
 		if err != nil {
 			return err
 		}
-		planned[strings.TrimPrefix(name, "files/")] = bytes.ReplaceAll(b, []byte("SKGo.Application"), []byte(id))
+		name = strings.TrimPrefix(name, "files/")
+		if strings.HasSuffix(name, ".tmpl") {
+			// Standalone SDK consumers provide their own view and service; a
+			// resolved SKGo application gets its own Go executable automatically.
+			if r.Project.Module == "" {
+				return nil
+			}
+			t, err := template.New(name).Parse(string(b))
+			if err != nil {
+				return err
+			}
+			var out bytes.Buffer
+			if err := t.Execute(&out, r.Project); err != nil {
+				return err
+			}
+			b = out.Bytes()
+			name = strings.TrimSuffix(name, ".tmpl")
+			if strings.HasSuffix(name, ".go") {
+				b, err = format.Source(b)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		planned[name] = bytes.ReplaceAll(b, []byte("SKGo.Application"), []byte(id))
 		return nil
 	})
 	if err != nil {

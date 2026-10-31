@@ -7,6 +7,14 @@ $ErrorActionPreference = 'Stop'
 Push-Location $PSScriptRoot
 try {
     if (!(Test-Path 'native\bin\skgo_native_core_shared.dll')) { throw 'Run skgo plugin windows-shell prepare on your development machine and transfer windows/ including SDK/ and native/ first.' }
+    if (Test-Path 'host\main.go') {
+        if (!(Test-Path '..\web\build\skgo.manifest.json')) { throw 'Build the application frontend on your development machine with skgo build before transferring the project.' }
+        Push-Location ..
+        try {
+            go build -o windows\native\skgo-application.exe ./windows/host
+            if ($LASTEXITCODE -ne 0) { throw 'Go application build failed' }
+        } finally { Pop-Location }
+    }
     if ($Action -eq 'Package') {
         if (!$Certificate) { throw 'Package requires -Certificate with your development or distribution signing certificate.' }
         New-Item -ItemType Directory -Force build | Out-Null

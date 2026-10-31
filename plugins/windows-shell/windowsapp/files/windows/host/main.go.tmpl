@@ -1,0 +1,47 @@
+// Command host serves this application's embedded frontend for its Windows UI.
+// Closing the parent's stdin pipe stops the server, including after a UI crash.
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "fmt"
+    "io"
+    "io/fs"
+    "net"
+    "net/http"
+    "os"
+    "time"
+
+    app "{{.Module}}"
+    "{{.Module}}/web"
+)
+
+func main() {
+    if err := run(); err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
+}
+
+func run() error {
+    listener, err := net.Listen("tcp", "127.0.0.1:0")
+    if err != nil { return err }
+    defer listener.Close()
+    origin := "http://" + listener.Addr().String()
+    dist, err := fs.Sub(web.Build, "build")
+    if err != nil { return err }
+    handler, err := app.NewHandler(dist, origin)
+    if err != nil { return err }
+    server := &http.Server{Handler: handler, ReadHeaderTimeout: 10*time.Second}
+    defer server.Close()
+    served := make(chan error, 1)
+    go func() { served <- server.Serve(listener) }()
+    parentClosed := make(chan struct{})
+    go func() { _, _ = io.Copy(io.Discard, os.Stdin); close(parentClosed) }()
+    if err := json.NewEncoder(os.Stdout).Encode(struct { Origin string `json:"origin"` }{origin}); err != nil { return err }
+    select {
+    case err := <-served: return err
+    case <-parentClosed:
+    }
+    ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+    defer cancel()
+    return server.Shutdown(ctx)
+}
