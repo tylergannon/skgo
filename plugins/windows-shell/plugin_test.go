@@ -15,14 +15,14 @@ import (
 func TestWindowsPluginSurface(t *testing.T) {
 	p := windowsPlugin{}
 	d := p.Describe()
-	if d.ID != "windows-shell" || !d.Generator || len(d.Addons) != 0 || len(d.Templates) != 0 {
+	if d.ID != "windows-shell" || !d.Generator || len(d.Addons) != 1 || d.Addons[0].Name != "windows-app" || len(d.Templates) != 0 {
 		t.Fatalf("descriptor=%+v", d)
 	}
 	var help bytes.Buffer
 	if err := p.RunCommand(t.Context(), templateapi.CommandRequest{Args: []string{"help"}, Stdout: &help}); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(help.String(), "Apple") || strings.Contains(help.String(), "build") || !strings.Contains(help.String(), "windows/SDK") {
+	if strings.Contains(help.String(), "Apple") || !strings.Contains(help.String(), "build.ps1") || !strings.Contains(help.String(), "windows/SDK") {
 		t.Fatal(help.String())
 	}
 	for _, command := range []string{"setup", "prepare", "build"} {
