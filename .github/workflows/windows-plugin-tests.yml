@@ -1,0 +1,81 @@
+name: Windows remote-client plugin tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+    tags-ignore: ['**']
+    paths:
+      - 'plugins/windows-shell/**'
+      - 'plugins/native-client/**'
+      - 'plugins/native-shell/**'
+      - 'templateapi/**'
+      - 'internal/pluginbuild/**'
+      - 'internal/plugininstall/**'
+      - 'internal/gen/**'
+      - 'cmd/skgo/**'
+      - '*.go'
+      - 'go.*'
+      - '.github/workflows/windows-plugin-tests.yml'
+  pull_request:
+    paths:
+      - 'plugins/windows-shell/**'
+      - 'plugins/native-client/**'
+      - 'plugins/native-shell/**'
+      - 'templateapi/**'
+      - 'internal/pluginbuild/**'
+      - 'internal/plugininstall/**'
+      - 'internal/gen/**'
+      - 'cmd/skgo/**'
+      - '*.go'
+      - 'go.*'
+      - '.github/workflows/windows-plugin-tests.yml'
+
+concurrency:
+  group: windows-plugin-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || 'skgo-managed-linux' }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          cache: false
+      - name: Windows plugin and common library contracts
+        run: go test ./plugins/windows-shell/... ./plugins/native-client/...
+      - name: Both real plugins through the host builder, installer and generator
+        run: go test -tags skgo_qualification -count=1 ./cmd/skgo -run '^TestNativeShellPluginsCoexist$'
+
+  csharp-consumer:
+    name: C# compiler and real-handler consumer
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ${{ github.event_name == 'pull_request' && 'macos-26' || 'skgo-managed-macos' }}
+    timeout-minutes: 15
+    env:
+      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+      GOMAXPROCS: '4'
+      GOFLAGS: -p=4
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          cache: false
+      - uses: jdx/mise-action@v4
+        with:
+          working_directory: plugins/windows-shell/sdk
+          export_path: true
+          cache: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Generated C# and exported SDK consumer
+        run: go test -tags skgo_qualification -count=1 -v ./plugins/windows-shell/...

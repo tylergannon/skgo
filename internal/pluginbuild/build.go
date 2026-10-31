@@ -154,10 +154,16 @@ func Build(ctx context.Context, o Options) error {
 		pin.Version = version
 		pinned = append(pinned, pin)
 	}
-	// Unrelated relative replacements would change meaning in the isolated copy.
+	// Preserve author-relative source dependencies when isolating a plugin. Host
+	// pins above take precedence; remaining replacements are relative to the
+	// original module, not the temporary build directory. Two shell plugins can
+	// therefore compile the same shared source library without vendoring it.
 	for _, r := range mod.Replace {
 		if r.Old.Path != "" && r.New.Version == "" && !filepath.IsAbs(r.New.Path) {
-			return fmt.Errorf("plugin replacement %s => %s is relative; stage explicit reproducible sources before building", r.Old.Path, r.New.Path)
+			resolved := filepath.Clean(filepath.Join(source, r.New.Path))
+			if err := mod.AddReplace(r.Old.Path, r.Old.Version, resolved, ""); err != nil {
+				return err
+			}
 		}
 	}
 	mod.Cleanup()
@@ -329,7 +335,7 @@ func copySource(source, dest string) error {
 		}
 		if d.IsDir() {
 			switch d.Name() {
-			case ".git", "node_modules", "ephemeral", ".local", ".cache", "build", ".build", "_links", ".svelte-kit", ".skgo", "zig-out", "zig-pkg", ".zig-cache", ".swiftpm":
+			case ".git", "node_modules", "ephemeral", ".local", ".cache", "build", ".build", "_links", ".svelte-kit", ".skgo", "zig-out", "zig-pkg", ".zig-cache", ".swiftpm", "bin", "obj":
 				return filepath.SkipDir
 			}
 			return os.MkdirAll(filepath.Join(dest, rel), 0755)

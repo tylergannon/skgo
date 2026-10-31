@@ -1,10 +1,12 @@
-go 1.27.2
+go 1.27.3
 
 use (
 	.
 	./example
 	./plugins/cli
 	./plugins/cli/example
+	./plugins/native-client
+	./plugins/windows-shell
 	./plugins/native-shell
 	./plugins/native-shell/example
 )

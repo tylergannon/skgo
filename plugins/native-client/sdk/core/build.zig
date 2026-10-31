@@ -27,6 +27,10 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(library);
     const library_step = b.step("library", "Install only the native ABI archive");
     library_step.dependOn(&b.addInstallArtifact(library, .{}).step);
+    // .NET loads a host-native dynamic library; Swift keeps its static archive.
+    const dynamic = b.addLibrary(.{ .name = "skgo_native_core_shared", .root_module = abi, .linkage = .dynamic });
+    const shared_step = b.step("shared", "Install the host-native ABI dynamic library for .NET");
+    shared_step.dependOn(&b.addInstallArtifact(dynamic, .{}).step);
     const abi_tests = b.addTest(.{ .root_module = abi });
     const run_abi_tests = b.addRunArtifact(abi_tests);
     test_step.dependOn(&run_abi_tests.step);
