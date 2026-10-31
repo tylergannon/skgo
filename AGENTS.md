@@ -20,11 +20,10 @@ Vite/Kit SSR and HMR, calling Go for application logic
 - Start a watcher on every dispatched run's pid so you wake when it exits.
 - Fix problems real code or users hit, not hypotheticals.
 - Guide pages and README: `ephemeral/guide-pages/SKILL.md`.
-- CI's Linux jobs run in containers on bob built from
-  `scripts/ci/bob-runner.Dockerfile`, which carries mise, example's mise
-  tools and Lightpanda. After changing it, `example/mise.toml` or
-  `scripts/ci/install-lightpanda.sh`, merge, then run
-  `scripts/ci/deploy-bob-runners.sh` from main.
+- Runner images, native services, fleet configuration and cache maintenance are
+  owned by `tylergannon/github-actions-runner`. Application workflows own their
+  build commands and tool selection. Update/deploy runner infrastructure there;
+  do not recreate repository-specific Docker or launchd runner fleets.
 
 ## Rules
 
