@@ -1,8 +1,9 @@
 # SKGo C# remote client
 
 This .NET 10 client uses the same resolved Go model and Zig protocol/cache core
-as Swift. It runs directly on macOS or Linux. No Go plugin, web view, or bridge
-server runs inside the application. Windows loading and packaging are deferred.
+as Swift. It runs directly on macOS, Linux and Windows x64. No Go plugin, web
+view, or bridge server is required for remote calls. The Windows shell plugin
+adds an optional WinUI 3/WebView2 application around this client.
 
 Install the windows-shell plugin paired with the exact official SKGo host.
 Use `--set out=windows/Generated.cs` on its plugin pin to override the output,
@@ -25,6 +26,10 @@ generated source in your application. Copy the host's
 `skgo_native_core_shared` through its normal native-library search. The dynamic
 library has a separate name so building it cannot change Swift's static linking.
 Build the library for the same architecture as the .NET process.
+For Windows x64, use `zig build shared -Dtarget=x86_64-windows-gnu` and copy
+`core/zig-out/bin/skgo_native_core_shared.dll` beside the application. The
+shell plugin's `prepare` command cross-compiles and stages this DLL, and its
+generated project copies it into build and publish output.
 
 Construct an application-owned `HttpClient` whose handler has
 `AllowAutoRedirect = false`, configure its headers/cookies, and wrap it in
