@@ -47,7 +47,9 @@ VitePlus command, `cd web && node_modules/.bin/vp install
 --no-frozen-lockfile`. Finish by running `go tool skgo kit-patch --web web
 --check` from the application root. The check verifies the actual installed
 Kit queue source as well as the committed configuration; applying the patch
-alone does not install dependencies.
+alone does not install dependencies. The same steps move a project to this
+release's Kit: `--apply` replaces skgo's earlier correction entry and patch
+file and leaves the installed earlier Kit to the native install.
 
 ## License
 
