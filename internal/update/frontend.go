@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tylergannon/skgo/internal/kitpatch"
 	"github.com/tylergannon/skgo/internal/toolchain"
 	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v3"
@@ -132,6 +133,11 @@ func dependencyFile(name string) bool {
 	case "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml":
 		return true
 	}
+	return ownedKitPatch(name)
+}
+
+// ownedKitPatch reports whether name is a Kit correction patch skgo authored.
+func ownedKitPatch(name string) bool {
 	return strings.HasPrefix(name, "patches/skgo-kit-") && strings.HasSuffix(name, ".patch")
 }
 func preservedFrontend(source, stage string) error {
@@ -311,6 +317,28 @@ func applyFrontend(root, stage string) error {
 		}
 		if err := os.Rename(temp, path); err != nil {
 			os.Remove(temp)
+			return err
+		}
+	}
+	// An owned Kit patch the stage no longer carries belonged to an earlier
+	// correction. Only bytes skgo shipped are removed; a file by skgo's name
+	// that the application changed stays where the application left it.
+	current, err := frontendFiles(root)
+	if err != nil {
+		return err
+	}
+	for name, data := range current {
+		if _, kept := files[name]; kept || !ownedKitPatch(name) {
+			continue
+		}
+		known, err := kitpatch.KnownCorrection(data)
+		if err != nil {
+			return err
+		}
+		if !known {
+			continue
+		}
+		if err := os.Remove(filepath.Join(root, filepath.FromSlash(name))); err != nil {
 			return err
 		}
 	}

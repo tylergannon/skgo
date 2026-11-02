@@ -11,9 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/tylergannon/skgo/internal/adapter"
@@ -23,7 +25,7 @@ import (
 
 const (
 	kitPackageName = "@sveltejs/kit"
-	ownedPatchName = "skgo-kit-3.1.0-queue.patch"
+	ownedPatchName = "skgo-kit-" + toolchain.Kit + "-queue.patch"
 	pnpmVersion    = toolchain.PNPM
 )
 
@@ -49,8 +51,28 @@ type project struct {
 	patch         []byte
 	patchPath     string
 	patched       map[string]string
-	kitVersion    string
+	// superseded holds the project's entries for earlier skgo-owned Kit
+	// corrections: an exact `@sveltejs/kit@<version>` key mapped to the patch
+	// file skgo authored for that version, whose bytes are still a correction
+	// skgo shipped (or which is already gone). Configure replaces them; Verify
+	// refuses to pass while one remains.
+	superseded map[string]string
+	// edited holds entries shaped like an earlier skgo correction whose file
+	// bytes are not any correction skgo shipped. The application changed that
+	// file, so Configure and Verify refuse rather than replace it.
+	edited     map[string]string
+	kitVersion string
+	// installedVersion is the Kit found in node_modules, or empty when none is
+	// installed. A version other than the supported one is what the native
+	// install replaces, so it is reported rather than refused.
+	installedVersion string
 }
+
+// ownedPatchFile names the patch file skgo authors for a Kit version.
+func ownedPatchFile(version string) string { return "skgo-kit-" + version + "-queue.patch" }
+
+// ownedPatchValue is the portable pnpm entry value for that file.
+func ownedPatchValue(version string) string { return "patches/" + ownedPatchFile(version) }
 
 // Configure pins the selected app's existing Kit dependency, writes the
 // packaged correction into that app, and merges its exact pnpm patch entry.
@@ -77,17 +99,34 @@ func Configure(options Options) error {
 	}
 	if !bytes.Equal(p.packageBytes, p.packageUpdate) {
 		if err := atomicReplace(p.packagePath, p.packageUpdate); err != nil {
-			return fmt.Errorf("write Kit 3.1.0 pin to %s: %w", p.packagePath, err)
+			return fmt.Errorf("write Kit %s pin to %s: %w", p.metadata.Version, p.packagePath, err)
 		}
+	}
+	changed := false
+	for key := range p.superseded {
+		delete(p.patched, key)
+		changed = true
 	}
 	if _, configured := p.patched[patchKey(p)]; !configured {
 		p.patched[patchKey(p)] = relativePatchValue(p)
+		changed = true
+	}
+	if changed {
 		if err := setPatchedDependencies(options, p); err != nil {
 			return err
 		}
 	}
+	if err := removeOrphanOwnedPatches(p); err != nil {
+		return err
+	}
 	if options.Out != nil {
-		fmt.Fprintf(options.Out, "Configured the Kit 3.1.0 prerender queue correction in %s.\n", p.root)
+		fmt.Fprintf(options.Out, "Configured the Kit %s prerender queue correction in %s.\n", p.metadata.Version, p.root)
+		for _, key := range slices.Sorted(maps.Keys(p.superseded)) {
+			fmt.Fprintf(options.Out, "Replaced the earlier correction %s (%s).\n", key, p.superseded[key])
+		}
+		if p.installedVersion != "" && p.installedVersion != p.metadata.Version {
+			fmt.Fprintf(options.Out, "Installed %s@%s is replaced by the native install of %s@%s.\n", kitPackageName, p.installedVersion, kitPackageName, p.metadata.Version)
+		}
 		fmt.Fprintf(options.Out, "Files authored: %s, %s, and %s.\n", p.packagePath, p.patchPath, filepath.Join(p.root, "pnpm-workspace.yaml"))
 		fmt.Fprintf(options.Out, "Installation is still required: run `%s install --no-frozen-lockfile` from %s, then run `go tool skgo kit-patch --web %s --check` from the Go app root.\n", filepath.Join("node_modules", ".bin", "vp"), p.web, p.web)
 	}
@@ -112,6 +151,9 @@ func Verify(options Options) error {
 	}
 	if err := requirePatchMap(p); err != nil {
 		return err
+	}
+	if keys := slices.Sorted(maps.Keys(p.superseded)); len(keys) > 0 {
+		return fmt.Errorf("earlier skgo Kit correction %s remains configured; run `go tool skgo kit-patch --web %s --apply`", keys[0], p.web)
 	}
 	if err := checkInstalledCorrected(p); err != nil {
 		return err
@@ -157,12 +199,70 @@ func prepare(options Options) (*project, error) {
 	if err != nil {
 		return nil, err
 	}
+	superseded, edited := map[string]string{}, map[string]string{}
+	for key, value := range patched {
+		version, ok := strings.CutPrefix(key, kitPackageName+"@")
+		if !ok || version == metadata.Version || value != ownedPatchValue(version) {
+			continue
+		}
+		known, err := knownCorrectionFile(resolvedConfigPath(web, value), metadata)
+		if err != nil {
+			return nil, err
+		}
+		if known {
+			superseded[key] = value
+		} else {
+			edited[key] = value
+		}
+	}
 	p := &project{
 		web: web, root: web, packagePath: packagePath, packageBytes: packageBytes,
 		packageUpdate: update, metadata: metadata, patch: patch, patchPath: path,
-		patched: patched, kitVersion: currentVersion,
+		patched: patched, superseded: superseded, edited: edited, kitVersion: currentVersion,
 	}
 	return p, nil
+}
+
+// knownCorrection reports whether data is a Kit queue correction skgo shipped.
+// The queue source has not changed since the correction was first packaged, so
+// every correction skgo has shipped is the current patch's bytes; a pin whose
+// patch bytes differ must also recognise the earlier digests here, or existing
+// projects refuse to advance.
+func knownCorrection(metadata adapter.KitQueueMetadata, data []byte) bool {
+	return digest(data) == metadata.PatchSHA256
+}
+
+// knownCorrectionFile reports whether the file at path holds a correction skgo
+// shipped. A missing file is treated as known: there is nothing of the
+// application's to preserve. Anything else that is not a regular file with
+// those bytes is the application's.
+func knownCorrectionFile(path string, metadata adapter.KitQueueMetadata) (bool, error) {
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("inspect earlier Kit correction %s: %w", path, err)
+	}
+	if !info.Mode().IsRegular() {
+		return false, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false, fmt.Errorf("read earlier Kit correction %s: %w", path, err)
+	}
+	return knownCorrection(metadata, data), nil
+}
+
+// KnownCorrection reports whether data is a Kit queue correction skgo shipped,
+// so a caller removing a file by skgo's own name can confirm the bytes are
+// skgo's before deleting it.
+func KnownCorrection(data []byte) (bool, error) {
+	metadata, _, err := adapter.KitQueueCompatibility()
+	if err != nil {
+		return false, fmt.Errorf("load packaged Kit queue correction: %w", err)
+	}
+	return knownCorrection(metadata, data), nil
 }
 
 func resolveWeb(options Options) (string, error) {
@@ -383,6 +483,12 @@ func checkPatchMap(p *project) error {
 			}
 			continue
 		}
+		if _, ok := p.superseded[key]; ok {
+			continue
+		}
+		if _, ok := p.edited[key]; ok {
+			return fmt.Errorf("earlier skgo Kit correction %s maps to %s, whose bytes are not a correction skgo shipped; the file is left as the application wrote it. Move those changes out of the skgo-owned patch and remove the entry, then rerun `go tool skgo kit-patch --web %s --apply`", key, value, p.web)
+		}
 		if key == kitPackageName || strings.HasPrefix(key, kitPackageName+"@") {
 			return fmt.Errorf("conflicting Kit patch entry %q exists; refusing to compose patches", key)
 		}
@@ -412,11 +518,17 @@ func checkInstalledIfPresent(p *project) error {
 	if err != nil {
 		return err
 	}
-	if name != p.metadata.Package || version != p.metadata.Version {
+	if name != p.metadata.Package {
 		return fmt.Errorf("installed Kit is %s@%s; supported package is %s@%s", name, version, p.metadata.Package, p.metadata.Version)
 	}
+	p.installedVersion = version
+	if version != p.metadata.Version {
+		// An earlier or later Kit is what the required native install replaces;
+		// its queue bytes are not this correction's to judge.
+		return nil
+	}
 	if queueHash != p.metadata.StockSHA256 && queueHash != p.metadata.CorrectedSHA256 {
-		return fmt.Errorf("installed Kit 3.1.0 queue source has unexpected SHA-256 %s; expected stock %s or corrected %s", queueHash, p.metadata.StockSHA256, p.metadata.CorrectedSHA256)
+		return fmt.Errorf("installed Kit %s queue source has unexpected SHA-256 %s; expected stock %s or corrected %s", p.metadata.Version, queueHash, p.metadata.StockSHA256, p.metadata.CorrectedSHA256)
 	}
 	return nil
 }
@@ -496,6 +608,47 @@ func writePatch(p *project) error {
 			return checkPatchDestination(p)
 		}
 		return fmt.Errorf("write patch %s without overwriting existing files: %w", p.patchPath, err)
+	}
+	return nil
+}
+
+// removeOrphanOwnedPatches deletes skgo-authored Kit patch files in the
+// project's patches directory that no pnpm entry references any more: the file
+// of a superseded correction, or one left behind after the entry was stripped
+// by `skgo update`. A file is skgo's by its bytes, not its name: one that
+// carries anything other than a correction skgo shipped stays where it is.
+func removeOrphanOwnedPatches(p *project) error {
+	patchDir := filepath.Join(p.root, "patches")
+	entries, err := os.ReadDir(patchDir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	referenced := map[string]bool{}
+	for _, value := range p.patched {
+		referenced[filepath.Clean(resolvedConfigPath(p.root, value))] = true
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if !entry.Type().IsRegular() || !strings.HasPrefix(name, "skgo-kit-") || !strings.HasSuffix(name, "-queue.patch") {
+			continue
+		}
+		path := filepath.Join(patchDir, name)
+		if path == p.patchPath || referenced[filepath.Clean(path)] {
+			continue
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read unreferenced Kit patch %s: %w", path, err)
+		}
+		if !knownCorrection(p.metadata, data) {
+			continue
+		}
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("remove superseded Kit patch %s: %w", path, err)
+		}
 	}
 	return nil
 }

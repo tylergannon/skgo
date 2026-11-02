@@ -34,7 +34,7 @@ func newFixture(t *testing.T, installed bool) fixture {
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@sveltejs/kit": "^3.1.0",
+    "@sveltejs/kit": "^3.1.1",
     "preserved-runtime": "workspace:*"
   },
   "devDependencies": {
@@ -49,7 +49,7 @@ func newFixture(t *testing.T, installed bool) fixture {
 		t.Fatal(err)
 	}
 	if installed {
-		installStockKit(t, web, "3.1.0", "@sveltejs/kit")
+		installStockKit(t, web, "3.1.1", "@sveltejs/kit")
 	}
 	return fixture{web: web}
 }
@@ -92,7 +92,7 @@ func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@sveltejs/kit": "^3.1.0",
+    "@sveltejs/kit": "^3.1.1",
     "preserved-runtime": "workspace:*"
   },
   "devDependencies": {
@@ -102,7 +102,7 @@ func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
   "custom": {"keep": [1, true, "same"]},
   `+pnpmDeclaration+`
 }
-`), []byte(`"@sveltejs/kit": "^3.1.0"`), []byte(`"@sveltejs/kit": "3.1.0"`), 1)
+`), []byte(`"@sveltejs/kit": "^3.1.1"`), []byte(`"@sveltejs/kit": "3.1.1"`), 1)
 	if !bytes.Equal(gotManifest, wantManifest) {
 		t.Fatalf("manifest changes escaped the Kit pin:\n%s\nwant:\n%s", gotManifest, wantManifest)
 	}
@@ -115,7 +115,7 @@ func TestConfigureUsesNativePNPMMergeAndIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rawPatched["@sveltejs/kit@3.1.0"] != "patches/skgo-kit-3.1.0-queue.patch" {
+	if rawPatched["@sveltejs/kit@3.1.1"] != "patches/skgo-kit-3.1.1-queue.patch" {
 		t.Fatalf("authored Kit patch path is not portable: %#v", rawPatched)
 	}
 	if rawPatched["preserved-package@1.0.0"] != "patches/preserved.patch" || rawPatched["absolute-package@1.0.0"] != absPath {
@@ -156,7 +156,7 @@ func TestVerifyRejectsIncompleteConfigurationBeforePackageManager(t *testing.T) 
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t, false)
-			if err := os.WriteFile(filepath.Join(f.web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"3.1.0"},`+pnpmDeclaration+`}`), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(f.web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"3.1.1"},`+pnpmDeclaration+`}`), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			_, patch, err := adapter.KitQueueCompatibility()
@@ -173,7 +173,7 @@ func TestVerifyRejectsIncompleteConfigurationBeforePackageManager(t *testing.T) 
 				}
 			}
 			if tc.name != "map" {
-				if err := writeFixturePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.0": "patches/" + ownedPatchName}); err != nil {
+				if err := writeFixturePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.1": "patches/" + ownedPatchName}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -306,7 +306,7 @@ func TestRunPackageManagerRefusesAnotherDeclaredPNPM(t *testing.T) {
 func TestConfigureRefusesDuplicateKitJSONKeysWithoutRewritingPackage(t *testing.T) {
 	f := newFixture(t, false)
 	manifestPath := filepath.Join(f.web, "package.json")
-	manifest := []byte(`{"dependencies":{"@sveltejs/kit":"catalog:","@sveltejs/kit":"^3.1.0"}}`)
+	manifest := []byte(`{"dependencies":{"@sveltejs/kit":"catalog:","@sveltejs/kit":"^3.1.1"}}`)
 	if err := os.WriteFile(manifestPath, manifest, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -329,26 +329,33 @@ func TestConfigureRefusesDuplicateKitJSONKeysWithoutRewritingPackage(t *testing.
 }
 
 func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
-	t.Run("unsupported installed version", func(t *testing.T) {
+	t.Run("installed package is not Kit", func(t *testing.T) {
 		f := newFixture(t, false)
-		installStockKit(t, f.web, "3.0.1", "@sveltejs/kit")
+		installStockKit(t, f.web, "3.1.1", "@other/kit")
 		assertConfigureRefusesWithoutWrites(t, f, "supported package is")
+	})
+	t.Run("foreign patch on an earlier Kit", func(t *testing.T) {
+		f := newFixture(t, true)
+		if err := writeFixturePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.0": "patches/other-kit.patch"}); err != nil {
+			t.Fatal(err)
+		}
+		assertConfigureRefusesWithoutWrites(t, f, "conflicting Kit patch entry")
 	})
 	t.Run("altered installed queue", func(t *testing.T) {
 		f := newFixture(t, false)
-		installStockKitBytes(t, f.web, "3.1.0", "@sveltejs/kit", []byte("altered source\n"))
+		installStockKitBytes(t, f.web, "3.1.1", "@sveltejs/kit", []byte("altered source\n"))
 		assertConfigureRefusesWithoutWrites(t, f, "unexpected SHA-256")
 	})
 	t.Run("incompatible exact Kit patch", func(t *testing.T) {
 		f := newFixture(t, true)
-		if err := writeFixturePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.0": "patches/other-kit.patch"}); err != nil {
+		if err := writeFixturePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.1": "patches/other-kit.patch"}); err != nil {
 			t.Fatal(err)
 		}
 		beforeConfig, err := os.ReadFile(filepath.Join(f.web, "pnpm-workspace.yaml"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		assertConfigureRefusesWithoutWrites(t, f, "conflicting @sveltejs/kit@3.1.0")
+		assertConfigureRefusesWithoutWrites(t, f, "conflicting @sveltejs/kit@3.1.1")
 		assertBytesUnchanged(t, filepath.Join(f.web, "pnpm-workspace.yaml"), beforeConfig)
 	})
 	t.Run("absolute owned patch path", func(t *testing.T) {
@@ -364,7 +371,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.WriteFile(patchPath, patch, 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := writeFixturePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.0": patchPath}); err != nil {
+		if err := writeFixturePatchedDependencies(t, f, map[string]string{"@sveltejs/kit@3.1.1": patchPath}); err != nil {
 			t.Fatal(err)
 		}
 		assertConfigureRefusesWithoutWrites(t, f, "portable relative path")
@@ -395,7 +402,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.MkdirAll(web, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"},`+pnpmDeclaration+`}`), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.1"},`+pnpmDeclaration+`}`), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		parentConfig := filepath.Join(parent, "pnpm-workspace.yaml")
@@ -410,7 +417,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 			t.Fatalf("parent workspace was not refused: %v", err)
 		}
 		assertBytesUnchanged(t, parentConfig, before)
-		assertBytesUnchanged(t, filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"},`+pnpmDeclaration+`}`))
+		assertBytesUnchanged(t, filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.1"},`+pnpmDeclaration+`}`))
 		if _, err := os.Stat(filepath.Join(web, "patches")); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("refusal created patch directory: %v", err)
 		}
@@ -421,7 +428,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.MkdirAll(web, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"},`+pnpmDeclaration+`}`), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(web, "package.json"), []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.1"},`+pnpmDeclaration+`}`), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		parentConfig := filepath.Join(parent, "pnpm-workspace.yaml")
@@ -452,7 +459,7 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 		if err := os.MkdirAll(web, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		manifest := []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.0"},` + pnpmDeclaration + `}`)
+		manifest := []byte(`{"dependencies":{"@sveltejs/kit":"^3.1.1"},` + pnpmDeclaration + `}`)
 		if err := os.WriteFile(filepath.Join(web, "package.json"), manifest, 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -495,22 +502,22 @@ func TestConfigureRefusalsPrecedeAuthoredWrites(t *testing.T) {
 
 func TestPinKitChangesOnlyTheExistingDeclaration(t *testing.T) {
 	input := []byte("{\n  \"dependencies\": {\n    \"@sveltejs/kit\": \"catalog:\",\n    \"keep\": \"workspace:*\"\n  },\n  \"catalog\": {\n    \"keep\": \"^1\"\n  }\n}\n")
-	_, declaration, got, err := pinKit(input, "3.1.0")
+	_, declaration, got, err := pinKit(input, "3.1.1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := bytes.Replace(input, []byte(`"@sveltejs/kit": "catalog:"`), []byte(`"@sveltejs/kit": "3.1.0"`), 1)
+	want := bytes.Replace(input, []byte(`"@sveltejs/kit": "catalog:"`), []byte(`"@sveltejs/kit": "3.1.1"`), 1)
 	if declaration != "catalog:" || !bytes.Equal(got, want) {
 		t.Fatalf("pin changed unrelated package bytes or declaration = %q:\n%s", declaration, got)
 	}
-	if _, _, _, err := pinKit([]byte(`{"dependencies":{"@sveltejs/kit":"^3"},"devDependencies":{"@sveltejs/kit":"^3"}}`), "3.1.0"); err == nil {
+	if _, _, _, err := pinKit([]byte(`{"dependencies":{"@sveltejs/kit":"^3"},"devDependencies":{"@sveltejs/kit":"^3"}}`), "3.1.1"); err == nil {
 		t.Fatal("duplicate Kit dependency sections were accepted")
 	}
 	for _, input := range []string{
-		`{"dependencies":{"@sveltejs/kit":"catalog:","@sveltejs/kit":"^3.1.0"}}`,
-		`{"dependencies":{"@sveltejs/kit":"catalog:"},"dependencies":{"@sveltejs/kit":"^3.1.0"}}`,
+		`{"dependencies":{"@sveltejs/kit":"catalog:","@sveltejs/kit":"^3.1.1"}}`,
+		`{"dependencies":{"@sveltejs/kit":"catalog:"},"dependencies":{"@sveltejs/kit":"^3.1.1"}}`,
 	} {
-		if _, _, _, err := pinKit([]byte(input), "3.1.0"); err == nil {
+		if _, _, _, err := pinKit([]byte(input), "3.1.1"); err == nil {
 			t.Fatalf("duplicate package JSON keys were accepted: %s", input)
 		}
 	}
@@ -569,7 +576,7 @@ var stockKitQueue = sync.OnceValues(func() ([]byte, error) {
 	if err := json.Unmarshal(stockManifest, &manifest); err != nil {
 		return nil, err
 	}
-	if manifest["name"] != kitPackageName || manifest["version"] != "3.1.0" {
+	if manifest["name"] != kitPackageName || manifest["version"] != "3.1.1" {
 		return nil, fmt.Errorf("authoritative installed Kit identity = %v@%v", manifest["name"], manifest["version"])
 	}
 	queue, err := os.ReadFile(filepath.Join(stockDir, "src", "core", "postbuild", "queue.js"))
@@ -679,5 +686,183 @@ func assertBytesUnchanged(t *testing.T, path string, want []byte) {
 	got, err := os.ReadFile(path)
 	if err != nil || !bytes.Equal(got, want) {
 		t.Fatalf("%s changed or became unreadable: %v\n got %q\nwant %q", path, err, got, want)
+	}
+}
+
+// A project created by the previous release pins the earlier Kit exactly,
+// still has that Kit installed, and carries skgo's earlier correction entry
+// and patch file. Applying this release's correction replaces all three and
+// leaves the authored patch alone; only the native install is left to run.
+func TestConfigureReplacesTheEarlierOwnedKitCorrection(t *testing.T) {
+	f := newFixture(t, false)
+	installStockKit(t, f.web, "3.1.0", "@sveltejs/kit")
+	manifestPath := filepath.Join(f.web, "package.json")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest = bytes.Replace(manifest, []byte(`"@sveltejs/kit": "^3.1.1"`), []byte(`"@sveltejs/kit": "3.1.0"`), 1)
+	if err := os.WriteFile(manifestPath, manifest, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, patch, err := adapter.KitQueueCompatibility()
+	if err != nil {
+		t.Fatal(err)
+	}
+	patches := filepath.Join(f.web, "patches")
+	if err := os.MkdirAll(patches, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	earlier := filepath.Join(patches, "skgo-kit-3.1.0-queue.patch")
+	if err := os.WriteFile(earlier, patch, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	authored := filepath.Join(patches, "mine.patch")
+	if err := os.WriteFile(authored, []byte("authored patch\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Unreferenced files by skgo's name: one still carrying skgo's bytes is a
+	// leftover and goes; one the application rewrote is the application's.
+	leftover := filepath.Join(patches, "skgo-kit-3.0.0-queue.patch")
+	if err := os.WriteFile(leftover, patch, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	backup := filepath.Join(patches, "skgo-kit-backup-queue.patch")
+	if err := os.WriteFile(backup, []byte("the application's saved copy\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFixturePatchedDependencies(t, f, map[string]string{
+		"@sveltejs/kit@3.1.0": "patches/skgo-kit-3.1.0-queue.patch",
+		"mine@1.0.0":          "patches/mine.patch",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	opts := f.options()
+	opts.Out = &output
+	if err := Configure(opts); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"Replaced the earlier correction @sveltejs/kit@3.1.0 (patches/skgo-kit-3.1.0-queue.patch).",
+		"Installed @sveltejs/kit@3.1.0 is replaced by the native install of @sveltejs/kit@3.1.1.",
+		"Installation is still required",
+	} {
+		if !strings.Contains(output.String(), want) {
+			t.Errorf("apply output lacks %q:\n%s", want, output.String())
+		}
+	}
+	assertBytesUnchanged(t, manifestPath, bytes.Replace(manifest, []byte(`"@sveltejs/kit": "3.1.0"`), []byte(`"@sveltejs/kit": "3.1.1"`), 1))
+	raw, err := readRawPatchedDependencies(f.web)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"@sveltejs/kit@3.1.1": "patches/skgo-kit-3.1.1-queue.patch", "mine@1.0.0": "patches/mine.patch"}
+	if !equalStringMap(raw, want) {
+		t.Fatalf("patchedDependencies = %#v, want %#v", raw, want)
+	}
+	if _, err := os.Stat(earlier); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("earlier owned patch file remains: %v", err)
+	}
+	if _, err := os.Stat(leftover); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("unreferenced skgo correction remains: %v", err)
+	}
+	assertBytesUnchanged(t, filepath.Join(patches, ownedPatchName), patch)
+	assertBytesUnchanged(t, authored, []byte("authored patch\n"))
+	assertBytesUnchanged(t, backup, []byte("the application's saved copy\n"))
+	// Until the native install replaces the earlier Kit, the check refuses.
+	if err := Verify(f.options()); err == nil || !strings.Contains(err.Error(), "installed Kit is @sveltejs/kit@3.1.0; expected @sveltejs/kit@3.1.1") {
+		t.Fatalf("verify before install: %v", err)
+	}
+	// A second apply changes nothing and launches no pnpm write.
+	output.Reset()
+	if err := Configure(opts); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(output.String(), "Replaced") {
+		t.Fatalf("second apply reported a replacement:\n%s", output.String())
+	}
+}
+
+func TestVerifyRefusesWhileTheEarlierOwnedKitCorrectionRemains(t *testing.T) {
+	f := newFixture(t, true)
+	manifestPath := filepath.Join(f.web, "package.json")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(manifestPath, bytes.Replace(manifest, []byte(`"@sveltejs/kit": "^3.1.1"`), []byte(`"@sveltejs/kit": "3.1.1"`), 1), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, patch, err := adapter.KitQueueCompatibility()
+	if err != nil {
+		t.Fatal(err)
+	}
+	patches := filepath.Join(f.web, "patches")
+	if err := os.MkdirAll(patches, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{ownedPatchName, "skgo-kit-3.1.0-queue.patch"} {
+		if err := os.WriteFile(filepath.Join(patches, name), patch, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := writeFixturePatchedDependencies(t, f, map[string]string{
+		"@sveltejs/kit@3.1.1": "patches/" + ownedPatchName,
+		"@sveltejs/kit@3.1.0": "patches/skgo-kit-3.1.0-queue.patch",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	opts := f.options()
+	opts.Run = func(string, []string, string, ...string) ([]byte, error) {
+		return nil, errors.New("unexpected native pnpm invocation for local refusal")
+	}
+	err = Verify(opts)
+	web, resolveErr := filepath.EvalSymlinks(f.web)
+	if resolveErr != nil {
+		t.Fatal(resolveErr)
+	}
+	if err == nil || !strings.Contains(err.Error(), "earlier skgo Kit correction @sveltejs/kit@3.1.0 remains configured; run `go tool skgo kit-patch --web "+web+" --apply`") {
+		t.Fatalf("verify with a stale correction: %v", err)
+	}
+}
+
+// The application edited the file skgo wrote for the earlier Kit. Its entry
+// has skgo's shape, but the bytes are the application's: apply refuses by
+// name, and nothing is written or deleted.
+func TestConfigureRefusesAnEditedEarlierOwnedKitCorrection(t *testing.T) {
+	f := newFixture(t, false)
+	installStockKit(t, f.web, "3.1.0", "@sveltejs/kit")
+	manifestPath := filepath.Join(f.web, "package.json")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(manifestPath, bytes.Replace(manifest, []byte(`"@sveltejs/kit": "^3.1.1"`), []byte(`"@sveltejs/kit": "3.1.0"`), 1), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, patch, err := adapter.KitQueueCompatibility()
+	if err != nil {
+		t.Fatal(err)
+	}
+	patches := filepath.Join(f.web, "patches")
+	if err := os.MkdirAll(patches, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	edited := append(append([]byte{}, patch...), []byte("+// the application's own fix\n")...)
+	earlier := filepath.Join(patches, "skgo-kit-3.1.0-queue.patch")
+	if err := os.WriteFile(earlier, edited, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFixturePatchedDependencies(t, f, map[string]string{
+		"@sveltejs/kit@3.1.0": "patches/skgo-kit-3.1.0-queue.patch",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	want := "earlier skgo Kit correction @sveltejs/kit@3.1.0 maps to patches/skgo-kit-3.1.0-queue.patch, whose bytes are not a correction skgo shipped"
+	assertConfigureRefusesWithoutWrites(t, f, want)
+	assertBytesUnchanged(t, earlier, edited)
+	if _, err := os.Lstat(filepath.Join(patches, ownedPatchName)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("refusal wrote the current correction: %v", err)
 	}
 }

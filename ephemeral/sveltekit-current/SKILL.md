@@ -7,7 +7,7 @@ description: Map SvelteKit 3 behavior from skgo's pinned Kit source before chang
 
 Treat Kit as the specification. Before changing a mirrored feature, read its
 implementation in the installed `example/web/node_modules/@sveltejs/kit`
-package, verified as version `3.1.0` against the frozen lockfile. Each worktree
+package, verified as version `3.1.1` against the frozen lockfile. Each worktree
 installs its own pinned package; do not depend on another checkout's ignored
 reference directory. Use the official GitHub release for the target tag to
 identify migrations since the prior pin.
@@ -68,5 +68,15 @@ Verified 3.1.0 changes: endpoint server tracing creates `sveltekit.endpoint`;
 CSP quotes `report-sha256`, `report-sha384`, and `report-sha512`. Prerender MIME
 extensions come from generated files. Kit sync compares physical generated-file
 contents before rewriting; the browser inherits iframe focus and service-worker
-deployment recovery fixes. The exact declared-Inputs queue correction remains
-required and is qualified against 3.1.0.
+deployment recovery fixes. The exact declared-Inputs queue correction remained
+required and was qualified against 3.1.0.
+
+Verified 3.1.1 changes: a malformed request pathname that `reroute` rewrites to
+a valid one answers 400 instead of throwing; remote form submissions are grouped in one
+pass instead of `getAll` per field; `query.batch` batches are keyed by the
+function object rather than its id; the dev server reuses the original `fetch`
+across reloads; client-side route resolution prefixes `url.origin` so a `//`
+pathname cannot load another origin's code; service-worker env injection keeps
+sourcemaps; server-only remote modules in `server` directories report a
+dedicated build error. The declared-Inputs queue source is byte-identical to
+3.1.0 and the same correction is qualified against 3.1.1.

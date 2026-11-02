@@ -13,7 +13,7 @@
 package toolchain
 
 // Kit is the @sveltejs/kit version skgo mirrors and patches.
-const Kit = "3.1.0"
+const Kit = "3.1.1"
 
 // Svelte is the svelte version the example application and new applications use.
 const Svelte = "5.57.2"

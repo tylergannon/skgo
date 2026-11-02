@@ -31,6 +31,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/tylergannon/skgo/internal/toolchain"
 )
 
 // The adapter as files: the entry `vite.config.ts` imports, and beside it the
@@ -74,14 +76,14 @@ type KitQueueMetadata struct {
 // keep independent copies of the patch or its hashes.
 func KitQueueCompatibility() (KitQueueMetadata, []byte, error) {
 	var metadata KitQueueMetadata
-	metadataBytes, err := files.ReadFile(path.Join(filesDir, "compat/kit-3.1.0-queue.json"))
+	metadataBytes, err := files.ReadFile(path.Join(filesDir, "compat", "kit-"+toolchain.Kit+"-queue.json"))
 	if err != nil {
 		return metadata, nil, err
 	}
 	if err := json.Unmarshal(metadataBytes, &metadata); err != nil {
 		return KitQueueMetadata{}, nil, err
 	}
-	patch, err := files.ReadFile(path.Join(filesDir, "compat/kit-3.1.0-queue.patch"))
+	patch, err := files.ReadFile(path.Join(filesDir, "compat", "kit-"+toolchain.Kit+"-queue.patch"))
 	if err != nil {
 		return KitQueueMetadata{}, nil, err
 	}

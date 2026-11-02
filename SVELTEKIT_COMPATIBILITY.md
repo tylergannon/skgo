@@ -42,6 +42,101 @@ For every reviewed or adopted Kit release:
 
 This is a manual maintenance procedure; it creates no scheduled task.
 
+## 3.1.1 — reviewed 2026-11-02
+
+skgo adopts stable Kit 3.1.1 from 3.1.0. Verified against the official npm
+registry: `@sveltejs/kit@3.1.1` was published 2026-10-29T23:48:42Z and is the
+`latest` tag; the previous pin 3.1.0 was published 2026-10-14. Reviewed the
+[3.1.1 release](https://github.com/sveltejs/kit/releases/tag/%40sveltejs%2Fkit%403.1.1)
+and compared the two registry tarballs file by file (19 files differ; peer
+dependencies and `engines` are unchanged: svelte `^5.57.1`, vite `^8.0.12`,
+typescript `^6.0.0`, Node `>=22.17`). Status: adopted on this branch; main
+integration and publication are recorded separately.
+
+| Released change | SKGO disposition |
+| --- | --- |
+| A request whose own pathname is malformed but which `reroute` rewrites to a valid pathname answers 400 instead of throwing (`respond.js` now decodes `url.pathname` inside the same guard as the rerouted path). | Go answers 400 at the request boundary: `net/http` refuses an invalid percent escape before the handler runs, and the middleware's `decodePathname` rejects invalid UTF-8 in the pathname it routes, with or without a Go reroute (observed on the built example: `/rerouted/4%C02`, `/go-alias/page%C0` and `/go-alias/%C0` all 400). No change; `routing_path_test.go` covers the decoder and `example/reroute_test.go` the reroute path. |
+| Function snapshots restored once on client-only startup; `//` pathnames are resolved with `url.origin` prefixed so route resolution cannot load another origin's code. | Inherited Kit browser client. Go rejects non-clean `//` request paths before dispatch (recorded at 3.0.0); no Go port. |
+| Separate non-exported `query.batch` functions no longer share a batch (keyed by the function, not `__.id`). | Go batches are per request and per registered remote id; every Go batch query is a distinct declared registration, so no Go port. |
+| Dev server reuses the original `fetch` across reloads (`instance.js` keeps the unwrapped fetch under `Symbol.for('sveltekit.unwrapped_fetch')`). | Inherited Kit development instance; `skgo dev` does not wrap `globalThis.fetch` (`fetch-bridge.js` dispatches explicitly). |
+| Remote form submissions grouped in one pass (`group_formdata`) instead of `getAll` per field. | Go reads form entries once in order (`document_form.go`'s `readFormEntries`) and decodes the `formdata` wire once; no quadratic `getAll` exists in Go. |
+| No file watcher while loading `src/env`; service-worker env injection keeps sourcemaps; `typescript.config` default is no longer a function; actionable errors for remote modules in server-only locations; `params.js` cannot pull server-only modules into the browser. | Inherited Kit Vite plugin, sync and config validation; Go owns none of these. |
+
+The declared-Inputs queue source `src/core/postbuild/queue.js` is byte-identical
+between 3.1.0 and 3.1.1 (stock SHA-256 `dbe8bbac…`, corrected `400bf345…`,
+patch `0d35d370…`). The identical correction is packaged as
+`kit-3.1.1-queue.{json,patch}` with correction ID
+`skgo-kit-3.1.1-prerender-queue-v1`; the adapter, `kitpatch` and
+`prerender.js` now derive those names from the single pin
+(`toolchain.Kit` and the adapter's exact `@sveltejs/kit` peer) instead of
+spelling the version.
+
+This is the first Kit pin advance since `skgo kit-patch` shipped. On a project
+created by v0.45.1, `kit-patch --apply` refused twice (installed Kit 3.1.0;
+then skgo's own `@sveltejs/kit@3.1.0` patch entry as "conflicting"), so the
+documented existing-project path could not advance a pin. `kit-patch --apply`
+now leaves an installed earlier Kit to the required native install, replaces
+skgo's earlier correction entry and deletes its patch file, and still refuses
+foreign Kit patches; `--check` refuses while an earlier owned entry remains;
+`skgo update` removes the orphaned owned patch file when it applies the stage.
+Ownership is decided by bytes, not by name: an earlier entry is replaced only
+when its file is a correction skgo shipped (or is already gone); an earlier
+owned-name file the application edited makes `--apply` and `--check` refuse by
+name and is left as written; an unreferenced `patches/skgo-kit-*-queue.patch`
+is deleted only when it carries skgo's bytes; and the updater applies the same
+test before removing a file absent from its stage. Every correction skgo has
+shipped (3.0.0, 3.1.0, 3.1.1) is the same patch bytes, so the test is the
+packaged patch digest; a pin whose patch bytes change must also recognise the
+earlier digests or existing projects refuse to advance. Contracts:
+`TestConfigureReplacesTheEarlierOwnedKitCorrection`,
+`TestConfigureRefusesAnEditedEarlierOwnedKitCorrection`,
+`TestVerifyRefusesWhileTheEarlierOwnedKitCorrectionRemains`, the
+"foreign patch on an earlier Kit" refusal, and
+`TestApplyFrontendRemovesTheEarlierOwnedKitPatch`.
+
+Dependency refresh moves only Kit: 3.1.1's peers are satisfied by the retained
+Svelte 5.57.2, svelte-check 4.7.7, VitePlus/core 1.3.0 and TypeScript 6.0.3.
+Newer Svelte 5.57.3, svelte-check 4.7.8 and VitePlus 1.4.0 exist and are not
+adopted here. Locks for `example/web` and `plugins/cli/example/web`, which
+link the checkout adapter, were regenerated from installs; each changes only
+the Kit entry (and Kit's resolved `magic-string` 1.4.3).
+`plugins/native-shell/example/web` stays at published adapter 0.40.1 with Kit
+3.1.0: that example deliberately pairs released skgo v0.41.0 with the published
+adapter (its README; no local replace), the published adapter's exact peer and
+`development()` gate require 3.1.0, and it advances through
+`skgo update --complete-version` once a release carries the 3.1.1 adapter.
+Verified on the restored pairing: released v0.41.0's `kit-patch --check` passes
+with the Go workspace disabled, and the installed adapter's `development()`
+accepts the installed Kit. `docs/index.html` still states 3.1.0; `docs/` is
+edited only with permission, so that line is pending.
+
+Local validation on this branch (macOS, Go 1.27.3, vp 1.3.0): `just test`
+passed for every workspace module; `just build` of the example and
+`svelte-check` (0 errors, 0 warnings) passed; the `skgo_qualification` example
+suite including `TestBuiltClientHandoff` (Lightpanda) and
+`TestCheckPassesOnTheUnmodifiedExample` passed; the gen/hotreload/adapter
+process witnesses and the `skgo_dev_integration` real-session suite
+(`TestRealSession*`, including client handoff) passed. Fresh creation: the real
+`skgo new` from this checkout (`--adapter file:` packed adapter, `--sv-addon
+file:internal/sv`, `--skgo-replace`) produced an app pinned to 3.1.1 with the
+corrected queue installed; it built in production, served `/` with 200, and
+`kit-patch --check` verified it. Edited application update: an app created by
+main's v0.45.1 toolchain (Kit 3.1.0, earlier correction entry) received a Go
+remote function and page, a page edit, README, static asset, script,
+dependency and override edits; this checkout's `kit-patch --apply` replaced the
+earlier correction, the native install moved it to 3.1.1 with the corrected
+digest, `--check` verified, the app built and served `/`, `/notes` and the
+static asset, and every authored file was byte-identical to its pre-update
+snapshot while package.json and pnpm-workspace.yaml differed only in the
+adapter, Kit pin and patch entry. Repeated from the same pre-update snapshot
+after the byte-ownership change: with a line appended to the app's
+`skgo-kit-3.1.0-queue.patch`, `--apply` refused by name and left the file,
+manifest and workspace untouched; with the file restored the same path
+advanced, built, and served `/`, `/notes` (authored heading) and
+`/edited.txt` (authored body) with the five authored files byte-identical.
+The registry and Go-proxy hops of `skgo update` need the published release
+and are not exercised here.
+
 ## 3.1.0 — reviewed 2026-10-16
 
 skgo adopted stable Kit 3.1.0 from 3.0.0 in #351. Publication and deployed
