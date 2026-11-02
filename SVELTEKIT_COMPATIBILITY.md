@@ -50,8 +50,9 @@ registry: `@sveltejs/kit@3.1.1` was published 2026-10-29T23:48:42Z and is the
 [3.1.1 release](https://github.com/sveltejs/kit/releases/tag/%40sveltejs%2Fkit%403.1.1)
 and compared the two registry tarballs file by file (19 files differ; peer
 dependencies and `engines` are unchanged: svelte `^5.57.1`, vite `^8.0.12`,
-typescript `^6.0.0`, Node `>=22.17`). Status: adopted on this branch; main
-integration and publication are recorded separately.
+typescript `^6.0.0`, Node `>=22.17`). Status: adopted on main in #449 and
+published as skgo v0.46.0; the published channels and their consumer
+verification are recorded at the end of this entry.
 
 | Released change | SKGO disposition |
 | --- | --- |
@@ -136,6 +137,71 @@ advanced, built, and served `/`, `/notes` (authored heading) and
 `/edited.txt` (authored body) with the five authored files byte-identical.
 The registry and Go-proxy hops of `skgo update` need the published release
 and are not exercised here.
+
+### Published v0.46.0 — verified 2026-11-02
+
+Main merged the adoption as #449 (`45e471a8`) and the Release published
+v0.46.0. Artifact identities, read from the channels themselves:
+
+- GitHub Release [v0.46.0](https://github.com/tylergannon/skgo/releases/tag/v0.46.0),
+  published 2026-11-02T21:31:41Z; `skgo_0.46.0_darwin_arm64.tar.gz` sha256
+  `a450fab3c9bc197c76afe237e84cf34ecbb0a5696d592f3889894a6c3ac70506`,
+  `linux_amd64` `a16b679d…`, `linux_arm64` `a2b95ece…`; the extracted
+  executable reports `skgo v0.46.0`, Go 1.27.3, and digests
+  `4516e490fa2f10ea98488c21f04e4b0699eb19aaedfb1159aba195441a906c0b`.
+- Go module `github.com/tylergannon/skgo@v0.46.0` on proxy.golang.org:
+  `.info` time 2026-11-02T21:06:42Z, origin tag `refs/tags/v0.46.0` at
+  `45e471a8e6e2677ffb8a6a49f4a680a78e7d4d21`, `go.sum`
+  `h1:fZLpHssyE/ZBUCNWBbgyYkFc1axZP7EHZmukc9sx9lU=`.
+- npm `@skgo/sveltekit-adapter@0.46.0` (`latest`), 2026-11-02T21:30:54Z,
+  `sha512-agEgPkRSj/m9FUjns8cqcTXk0mrKEH4AbV1CGjUWfKYH+rdbGemZINSuppAf7t9BAc5rSUW7TPzOS9F1ovUxug==`,
+  exact peer `@sveltejs/kit` 3.1.1; `@skgo/sv@0.46.0` (`latest`),
+  2026-11-02T21:34:15Z,
+  `sha512-JP77NiawsKABOsvhRrb2OJiL8m0plqOarFbOgCv3HzMdKfwpPRLJ3h8CjxN3oIojQtUdGAjKi+KEEAumJHbuVw==`,
+  whose `sv-addon.js` is byte-identical to 0.45.1's.
+- Homebrew cask `tylergannon/skgo/skgo` 0.46.0 (tap commit `b9ec1c5a`,
+  2026-11-02T21:31:44Z) installs the Release tarball; the linked binary
+  digests identically to the extracted executable above.
+
+Consumer verification used only those artifacts (no checkout build, packed
+adapter or local replace), with VitePlus 1.3.0, pnpm 12.14.0, Node 26.13.0,
+Go 1.27.3 and the sv 1.2.0 that vp selects. Fresh creation: the published
+v0.46.0 CLI's `skgo new` (minimal TypeScript, non-interactive) produced an
+app pinned to adapter 0.46.0, Kit 3.1.1 and the 3.1.1 correction, with
+`go.mod` requiring v0.46.0 and `go tool skgo` reporting v0.46.0; `just build`
+and the standalone binary served `/` (200), `/_app/version.json` and a
+rendered 404 page, and the scaffold's two Vitest tests, including the Chromium
+component test, passed. Edited application update: the published v0.45.1 CLI
+created an app (adapter 0.45.1, Kit 3.1.0, 3.1.0 correction) that then
+received a Go `handle` middleware setting an `X-App45` response header, a Go
+remote query with a `/notes` page, a home-page edit, `static/edited.txt`, a
+README line, a package script, a `nanoid` devDependency and a workspace
+override, all built and served before the update. The v0.45.1 executable's
+`skgo update` downloaded the Release, replaced itself with v0.46.0 (digest
+`4516e490…`), selected adapter 0.46.0 and sv add-on 0.46.0 from the registry,
+fetched `v0.46.0` through proxy.golang.org into an empty module cache,
+replaced the 3.1.0 correction with the 3.1.1 entry and file, verified it
+installed, regenerated and ran `just build`. Afterwards the six authored
+files were byte-identical to their pre-update snapshot; package.json kept the
+authored script and dependency while moving to adapter 0.46.0 and Kit 3.1.1
+(the updater's own manifest writer also sorts keys, adds `packageManager` and
+sets `devEngines.packageManager.onFail` to `error`, which a fresh scaffold
+leaves at `download`); the workspace kept the authored override and gained
+`vitest@*: 5.0.5`, the 3.1.1 patch entry and the adapter's release-age
+exclusion; `go.mod` moved to v0.46.0 and Go 1.27.3. The rebuilt binary served
+`/` with the authored heading, `/notes` with both Go-rendered notes,
+`/edited.txt` and the `X-App45` header; in Chromium the home page hydrated
+with no console errors or warnings and the `notes` link navigated client-side,
+the client fetching `/_app/remote/o0aeqp/getNotes` (200) and rendering both
+notes; the app's Vitest suite passed. Not established: `skgo check` on the
+fresh app reports `svelte-format` failed because the scaffold ships no
+Prettier, and on this machine `staticcheck` incomplete because the PATH
+staticcheck (v0.8.1 built with go1.27.1) cannot read Go 1.27.3 export data;
+neither involves Kit 3.1.1. Two `skgo new` runs started concurrently made the
+second's `sv add` fail downloading the community add-on; rerun alone it
+succeeded. `docs/index.html` still states 3.1.0, and the native-shell example
+keeps its released v0.41.0/adapter 0.40.1 pairing because its artifact targets
+that core version.
 
 ## 3.1.0 — reviewed 2026-10-16
 
