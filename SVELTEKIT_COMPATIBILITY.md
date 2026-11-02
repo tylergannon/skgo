@@ -95,7 +95,9 @@ Local validation on this branch (macOS, Go 1.27.3, vp 1.3.0): `just test`
 passed for every workspace module; `just build` of the example and
 `svelte-check` (0 errors, 0 warnings) passed; the `skgo_qualification` example
 suite including `TestBuiltClientHandoff` (Lightpanda) and
-`TestCheckPassesOnTheUnmodifiedExample` passed. Fresh creation: the real
+`TestCheckPassesOnTheUnmodifiedExample` passed; the gen/hotreload/adapter
+process witnesses and the `skgo_dev_integration` real-session suite
+(`TestRealSession*`, including client handoff) passed. Fresh creation: the real
 `skgo new` from this checkout (`--adapter file:` packed adapter, `--sv-addon
 file:internal/sv`, `--skgo-replace`) produced an app pinned to 3.1.1 with the
 corrected queue installed; it built in production, served `/` with 200, and
