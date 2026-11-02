@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tylergannon/skgo/internal/kitpatch"
 	"github.com/tylergannon/skgo/internal/toolchain"
 	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v3"
@@ -320,13 +321,21 @@ func applyFrontend(root, stage string) error {
 		}
 	}
 	// An owned Kit patch the stage no longer carries belonged to an earlier
-	// correction; the application keeps nothing else skgo did not author.
+	// correction. Only bytes skgo shipped are removed; a file by skgo's name
+	// that the application changed stays where the application left it.
 	current, err := frontendFiles(root)
 	if err != nil {
 		return err
 	}
-	for name := range current {
+	for name, data := range current {
 		if _, kept := files[name]; kept || !ownedKitPatch(name) {
+			continue
+		}
+		known, err := kitpatch.KnownCorrection(data)
+		if err != nil {
+			return err
+		}
+		if !known {
 			continue
 		}
 		if err := os.Remove(filepath.Join(root, filepath.FromSlash(name))); err != nil {

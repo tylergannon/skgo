@@ -68,8 +68,8 @@ Verified 3.1.0 changes: endpoint server tracing creates `sveltekit.endpoint`;
 CSP quotes `report-sha256`, `report-sha384`, and `report-sha512`. Prerender MIME
 extensions come from generated files. Kit sync compares physical generated-file
 contents before rewriting; the browser inherits iframe focus and service-worker
-deployment recovery fixes. The exact declared-Inputs queue correction remains
-required and is qualified against 3.1.0.
+deployment recovery fixes. The exact declared-Inputs queue correction remained
+required and was qualified against 3.1.0.
 
 Verified 3.1.1 changes: `reroute` output that decodes to a malformed pathname
 answers 400 instead of throwing; remote form submissions are grouped in one

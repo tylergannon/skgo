@@ -721,6 +721,16 @@ func TestConfigureReplacesTheEarlierOwnedKitCorrection(t *testing.T) {
 	if err := os.WriteFile(authored, []byte("authored patch\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// Unreferenced files by skgo's name: one still carrying skgo's bytes is a
+	// leftover and goes; one the application rewrote is the application's.
+	leftover := filepath.Join(patches, "skgo-kit-3.0.0-queue.patch")
+	if err := os.WriteFile(leftover, patch, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	backup := filepath.Join(patches, "skgo-kit-backup-queue.patch")
+	if err := os.WriteFile(backup, []byte("the application's saved copy\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := writeFixturePatchedDependencies(t, f, map[string]string{
 		"@sveltejs/kit@3.1.0": "patches/skgo-kit-3.1.0-queue.patch",
 		"mine@1.0.0":          "patches/mine.patch",
@@ -735,7 +745,7 @@ func TestConfigureReplacesTheEarlierOwnedKitCorrection(t *testing.T) {
 	}
 	for _, want := range []string{
 		"Replaced the earlier correction @sveltejs/kit@3.1.0 (patches/skgo-kit-3.1.0-queue.patch).",
-		"Installed @sveltejs/kit@3.1.0 is replaced by the native install.",
+		"Installed @sveltejs/kit@3.1.0 is replaced by the native install of @sveltejs/kit@3.1.1.",
 		"Installation is still required",
 	} {
 		if !strings.Contains(output.String(), want) {
@@ -754,8 +764,12 @@ func TestConfigureReplacesTheEarlierOwnedKitCorrection(t *testing.T) {
 	if _, err := os.Stat(earlier); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("earlier owned patch file remains: %v", err)
 	}
+	if _, err := os.Stat(leftover); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("unreferenced skgo correction remains: %v", err)
+	}
 	assertBytesUnchanged(t, filepath.Join(patches, ownedPatchName), patch)
 	assertBytesUnchanged(t, authored, []byte("authored patch\n"))
+	assertBytesUnchanged(t, backup, []byte("the application's saved copy\n"))
 	// Until the native install replaces the earlier Kit, the check refuses.
 	if err := Verify(f.options()); err == nil || !strings.Contains(err.Error(), "installed Kit is @sveltejs/kit@3.1.0; expected @sveltejs/kit@3.1.1") {
 		t.Fatalf("verify before install: %v", err)
@@ -810,5 +824,45 @@ func TestVerifyRefusesWhileTheEarlierOwnedKitCorrectionRemains(t *testing.T) {
 	}
 	if err == nil || !strings.Contains(err.Error(), "earlier skgo Kit correction @sveltejs/kit@3.1.0 remains configured; run `go tool skgo kit-patch --web "+web+" --apply`") {
 		t.Fatalf("verify with a stale correction: %v", err)
+	}
+}
+
+// The application edited the file skgo wrote for the earlier Kit. Its entry
+// has skgo's shape, but the bytes are the application's: apply refuses by
+// name, and nothing is written or deleted.
+func TestConfigureRefusesAnEditedEarlierOwnedKitCorrection(t *testing.T) {
+	f := newFixture(t, false)
+	installStockKit(t, f.web, "3.1.0", "@sveltejs/kit")
+	manifestPath := filepath.Join(f.web, "package.json")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(manifestPath, bytes.Replace(manifest, []byte(`"@sveltejs/kit": "^3.1.1"`), []byte(`"@sveltejs/kit": "3.1.0"`), 1), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, patch, err := adapter.KitQueueCompatibility()
+	if err != nil {
+		t.Fatal(err)
+	}
+	patches := filepath.Join(f.web, "patches")
+	if err := os.MkdirAll(patches, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	edited := append(append([]byte{}, patch...), []byte("+// the application's own fix\n")...)
+	earlier := filepath.Join(patches, "skgo-kit-3.1.0-queue.patch")
+	if err := os.WriteFile(earlier, edited, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFixturePatchedDependencies(t, f, map[string]string{
+		"@sveltejs/kit@3.1.0": "patches/skgo-kit-3.1.0-queue.patch",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	want := "earlier skgo Kit correction @sveltejs/kit@3.1.0 maps to patches/skgo-kit-3.1.0-queue.patch, whose bytes are not a correction skgo shipped"
+	assertConfigureRefusesWithoutWrites(t, f, want)
+	assertBytesUnchanged(t, earlier, edited)
+	if _, err := os.Lstat(filepath.Join(patches, ownedPatchName)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("refusal wrote the current correction: %v", err)
 	}
 }

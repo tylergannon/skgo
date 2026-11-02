@@ -79,7 +79,17 @@ now leaves an installed earlier Kit to the required native install, replaces
 skgo's earlier correction entry and deletes its patch file, and still refuses
 foreign Kit patches; `--check` refuses while an earlier owned entry remains;
 `skgo update` removes the orphaned owned patch file when it applies the stage.
-Contracts: `TestConfigureReplacesTheEarlierOwnedKitCorrection`,
+Ownership is decided by bytes, not by name: an earlier entry is replaced only
+when its file is a correction skgo shipped (or is already gone); an earlier
+owned-name file the application edited makes `--apply` and `--check` refuse by
+name and is left as written; an unreferenced `patches/skgo-kit-*-queue.patch`
+is deleted only when it carries skgo's bytes; and the updater applies the same
+test before removing a file absent from its stage. Every correction skgo has
+shipped (3.0.0, 3.1.0, 3.1.1) is the same patch bytes, so the test is the
+packaged patch digest; a pin whose patch bytes change must also recognise the
+earlier digests or existing projects refuse to advance. Contracts:
+`TestConfigureReplacesTheEarlierOwnedKitCorrection`,
+`TestConfigureRefusesAnEditedEarlierOwnedKitCorrection`,
 `TestVerifyRefusesWhileTheEarlierOwnedKitCorrectionRemains`, the
 "foreign patch on an earlier Kit" refusal, and
 `TestApplyFrontendRemovesTheEarlierOwnedKitPatch`.
@@ -87,9 +97,18 @@ Contracts: `TestConfigureReplacesTheEarlierOwnedKitCorrection`,
 Dependency refresh moves only Kit: 3.1.1's peers are satisfied by the retained
 Svelte 5.57.2, svelte-check 4.7.7, VitePlus/core 1.3.0 and TypeScript 6.0.3.
 Newer Svelte 5.57.3, svelte-check 4.7.8 and VitePlus 1.4.0 exist and are not
-adopted here. Locks for `example/web`, `plugins/cli/example/web` and
-`plugins/native-shell/example/web` were regenerated from installs; each changes
-only the Kit entry (and Kit's resolved `magic-string` 1.4.3).
+adopted here. Locks for `example/web` and `plugins/cli/example/web`, which
+link the checkout adapter, were regenerated from installs; each changes only
+the Kit entry (and Kit's resolved `magic-string` 1.4.3).
+`plugins/native-shell/example/web` stays at published adapter 0.40.1 with Kit
+3.1.0: that example deliberately pairs released skgo v0.41.0 with the published
+adapter (its README; no local replace), the published adapter's exact peer and
+`development()` gate require 3.1.0, and it advances through
+`skgo update --complete-version` once a release carries the 3.1.1 adapter.
+Verified on the restored pairing: released v0.41.0's `kit-patch --check` passes
+with the Go workspace disabled, and the installed adapter's `development()`
+accepts the installed Kit. `docs/index.html` still states 3.1.0; `docs/` is
+edited only with permission, so that line is pending.
 
 Local validation on this branch (macOS, Go 1.27.3, vp 1.3.0): `just test`
 passed for every workspace module; `just build` of the example and
@@ -109,8 +128,14 @@ earlier correction, the native install moved it to 3.1.1 with the corrected
 digest, `--check` verified, the app built and served `/`, `/notes` and the
 static asset, and every authored file was byte-identical to its pre-update
 snapshot while package.json and pnpm-workspace.yaml differed only in the
-adapter, Kit pin and patch entry. The registry and Go-proxy hops of `skgo
-update` need the published release and are not exercised here.
+adapter, Kit pin and patch entry. Repeated from the same pre-update snapshot
+after the byte-ownership change: with a line appended to the app's
+`skgo-kit-3.1.0-queue.patch`, `--apply` refused by name and left the file,
+manifest and workspace untouched; with the file restored the same path
+advanced, built, and served `/`, `/notes` (authored heading) and
+`/edited.txt` (authored body) with the five authored files byte-identical.
+The registry and Go-proxy hops of `skgo update` need the published release
+and are not exercised here.
 
 ## 3.1.0 — reviewed 2026-10-16
 

@@ -28,11 +28,11 @@ import (
 	"path"
 	"path/filepath"
 	"runtime/debug"
-
-	"github.com/tylergannon/skgo/internal/toolchain"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/tylergannon/skgo/internal/toolchain"
 )
 
 // The adapter as files: the entry `vite.config.ts` imports, and beside it the

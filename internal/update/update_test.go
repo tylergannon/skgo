@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tylergannon/skgo/internal/adapter"
 	"github.com/tylergannon/skgo/internal/buildinfo"
 	"github.com/tylergannon/skgo/internal/toolchain"
 )
@@ -263,7 +264,15 @@ func TestApplyFrontendRemovesTheEarlierOwnedKitPatch(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write(root, "patches/skgo-kit-3.1.0-queue.patch", "earlier correction")
+	_, shipped, err := adapter.KitQueueCompatibility()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The earlier correction carries skgo's bytes and the stage dropped it:
+	// removed. A file by skgo's name the application rewrote, which the stage
+	// also lacks, is the application's and stays.
+	write(root, "patches/skgo-kit-3.1.0-queue.patch", string(shipped))
+	write(root, "patches/skgo-kit-3.0.0-queue.patch", "the application's own fix")
 	write(root, "patches/mine.patch", "authored patch")
 	write(root, "src/page.svelte", "<h1>My edited application</h1>")
 	write(root, "package.json", `{"name":"app","devDependencies":{"@sveltejs/kit":"3.1.0"}}`)
@@ -276,6 +285,7 @@ func TestApplyFrontendRemovesTheEarlierOwnedKitPatch(t *testing.T) {
 	}
 	for name, want := range map[string]string{
 		"patches/skgo-kit-3.1.1-queue.patch": "current correction",
+		"patches/skgo-kit-3.0.0-queue.patch": "the application's own fix",
 		"patches/mine.patch":                 "authored patch",
 		"src/page.svelte":                    "<h1>My edited application</h1>",
 		"package.json":                       `{"name":"app","devDependencies":{"@sveltejs/kit":"3.1.1"}}`,
