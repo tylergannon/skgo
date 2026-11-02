@@ -179,10 +179,22 @@ README line, a package script, a `nanoid` devDependency and a workspace
 override, all built and served before the update. The v0.45.1 executable's
 `skgo update` downloaded the Release, replaced itself with v0.46.0 (digest
 `4516e490…`), selected adapter 0.46.0 and sv add-on 0.46.0 from the registry,
-fetched `v0.46.0` through proxy.golang.org into an empty module cache,
-replaced the 3.1.0 correction with the 3.1.1 entry and file, verified it
-installed, regenerated and ran `just build`. Afterwards the six authored
-files were byte-identical to their pre-update snapshot; package.json kept the
+upgraded `go.mod` to `v0.46.0`, replaced the 3.1.0 correction with the 3.1.1
+entry and file, verified it installed, regenerated and ran `just build`. That
+first run inherited this machine's `GOPRIVATE=github.com/tylergannon/*`,
+which also sets `GONOPROXY`, so its module fetch was a direct Git fetch of
+tag v0.46.0, not a proxy download (the scoped cache holds a `cache/vcs`
+checkout). The update was therefore repeated from the archived pre-update
+copy with a fresh v0.45.1 executable, an empty module cache and
+`GOPROXY=https://proxy.golang.org` with no `direct` fallback,
+`GONOPROXY=none`, `GOPRIVATE=none`, `GONOSUMDB=none` and
+`GOSUMDB=sum.golang.org` (effective values captured at the top of its log):
+it completed the same way, the cache holds no VCS checkout, only
+`@v/v0.46.0.{info,mod,zip}` from the proxy and the
+`sumdb/sum.golang.org/lookup/github.com/tylergannon/skgo@v0.46.0` record
+carrying `h1:fZLpHssy…`, and its rebuilt binary served the same authored
+behaviors below. After either run the six authored files were byte-identical
+to their pre-update snapshot; package.json kept the
 authored script and dependency while moving to adapter 0.46.0 and Kit 3.1.1
 (the updater's own manifest writer also sorts keys, adds `packageManager` and
 sets `devEngines.packageManager.onFail` to `error`, which a fresh scaffold
@@ -197,9 +209,11 @@ notes; the app's Vitest suite passed. Not established: `skgo check` on the
 fresh app reports `svelte-format` failed because the scaffold ships no
 Prettier, and on this machine `staticcheck` incomplete because the PATH
 staticcheck (v0.8.1 built with go1.27.1) cannot read Go 1.27.3 export data;
-neither involves Kit 3.1.1. Two `skgo new` runs started concurrently made the
-second's `sv add` fail downloading the community add-on; rerun alone it
-succeeded. `docs/index.html` still states 3.1.0, and the native-shell example
+neither involves Kit 3.1.1. When the two `skgo new` runs were started at the
+same time, the v0.45.1 one failed in `sv add` with "Failed to download
+community add-on packages … Unexpected end of input"; the published add-on
+tarball is intact and the same command rerun alone succeeded, so the
+concurrency is the observed circumstance, not an established cause. `docs/index.html` still states 3.1.0, and the native-shell example
 keeps its released v0.41.0/adapter 0.40.1 pairing because its artifact targets
 that core version.
 
