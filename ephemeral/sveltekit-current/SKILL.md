@@ -71,8 +71,8 @@ contents before rewriting; the browser inherits iframe focus and service-worker
 deployment recovery fixes. The exact declared-Inputs queue correction remained
 required and was qualified against 3.1.0.
 
-Verified 3.1.1 changes: `reroute` output that decodes to a malformed pathname
-answers 400 instead of throwing; remote form submissions are grouped in one
+Verified 3.1.1 changes: a malformed request pathname that `reroute` rewrites to
+a valid one answers 400 instead of throwing; remote form submissions are grouped in one
 pass instead of `getAll` per field; `query.batch` batches are keyed by the
 function object rather than its id; the dev server reuses the original `fetch`
 across reloads; client-side route resolution prefixes `url.origin` so a `//`
