@@ -42,7 +42,7 @@ Keep those entry points together when changing the application stack.
 {{if .ComponentTests}}
 Component tests additionally need `vp exec playwright install chromium` from `web/`.
 {{end}}
-The project includes skgo's Kit 3.1.0 prerender queue correction in its package
+The project includes skgo's Kit 3.1.1 prerender queue correction in its package
 configuration. VitePlus applies it during installation. For an existing app,
 run `go tool skgo kit-patch --web web --apply` from the Go app root, then
 `vp install --no-frozen-lockfile` from `web/`, followed by

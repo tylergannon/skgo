@@ -47,9 +47,14 @@ function verifyKitQueue(root) {
   try {
     const appRequire = createRequire(join(root, "package.json"));
     const adapterPackage = appRequire.resolve("@skgo/sveltekit-adapter/package.json");
+    // The adapter's exact Kit peer names the correction it ships.
+    const kitVersion = JSON.parse(readFileSync(adapterPackage, "utf8")).peerDependencies?.[
+      "@sveltejs/kit"
+    ];
+    if (!kitVersion) throw new Error("adapter package declares no @sveltejs/kit peer");
     metadata = JSON.parse(
       readFileSync(
-        join(dirname(adapterPackage), "skgo-adapter/compat/kit-3.1.0-queue.json"),
+        join(dirname(adapterPackage), `skgo-adapter/compat/kit-${kitVersion}-queue.json`),
         "utf8",
       ),
     );

@@ -132,6 +132,11 @@ func dependencyFile(name string) bool {
 	case "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml":
 		return true
 	}
+	return ownedKitPatch(name)
+}
+
+// ownedKitPatch reports whether name is a Kit correction patch skgo authored.
+func ownedKitPatch(name string) bool {
 	return strings.HasPrefix(name, "patches/skgo-kit-") && strings.HasSuffix(name, ".patch")
 }
 func preservedFrontend(source, stage string) error {
@@ -311,6 +316,20 @@ func applyFrontend(root, stage string) error {
 		}
 		if err := os.Rename(temp, path); err != nil {
 			os.Remove(temp)
+			return err
+		}
+	}
+	// An owned Kit patch the stage no longer carries belonged to an earlier
+	// correction; the application keeps nothing else skgo did not author.
+	current, err := frontendFiles(root)
+	if err != nil {
+		return err
+	}
+	for name := range current {
+		if _, kept := files[name]; kept || !ownedKitPatch(name) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(root, filepath.FromSlash(name))); err != nil {
 			return err
 		}
 	}

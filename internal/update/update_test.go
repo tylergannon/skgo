@@ -250,3 +250,42 @@ func TestProjectToolUsesRetainedExecutableAfterFirstCompilation(t *testing.T) {
 		t.Fatalf("host=%s calls=%d err=%v", got, calls, err)
 	}
 }
+
+func TestApplyFrontendRemovesTheEarlierOwnedKitPatch(t *testing.T) {
+	root, stage := t.TempDir(), t.TempDir()
+	write := func(dir, name, body string) {
+		t.Helper()
+		path := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(root, "patches/skgo-kit-3.1.0-queue.patch", "earlier correction")
+	write(root, "patches/mine.patch", "authored patch")
+	write(root, "src/page.svelte", "<h1>My edited application</h1>")
+	write(root, "package.json", `{"name":"app","devDependencies":{"@sveltejs/kit":"3.1.0"}}`)
+	write(stage, "patches/skgo-kit-3.1.1-queue.patch", "current correction")
+	write(stage, "patches/mine.patch", "authored patch")
+	write(stage, "src/page.svelte", "<h1>My edited application</h1>")
+	write(stage, "package.json", `{"name":"app","devDependencies":{"@sveltejs/kit":"3.1.1"}}`)
+	if err := applyFrontend(root, stage); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]string{
+		"patches/skgo-kit-3.1.1-queue.patch": "current correction",
+		"patches/mine.patch":                 "authored patch",
+		"src/page.svelte":                    "<h1>My edited application</h1>",
+		"package.json":                       `{"name":"app","devDependencies":{"@sveltejs/kit":"3.1.1"}}`,
+	} {
+		b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(name)))
+		if err != nil || string(b) != want {
+			t.Errorf("%s = %q, %v; want %q", name, b, err, want)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(root, "patches", "skgo-kit-3.1.0-queue.patch")); !os.IsNotExist(err) {
+		t.Fatalf("earlier owned Kit patch remains: %v", err)
+	}
+}
