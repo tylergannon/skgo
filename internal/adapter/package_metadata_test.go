@@ -39,7 +39,7 @@ func TestPackageMetadataMatchesEmbeddedRuntime(t *testing.T) {
 	if !reflect.DeepEqual(pkg.Exports, wantExports) {
 		t.Fatalf("adapter exports = %v, want %v", pkg.Exports, wantExports)
 	}
-	if pkg.PeerDependencies["@sveltejs/kit"] != "3.1.1" || len(pkg.Dependencies) != 0 {
+	if pkg.PeerDependencies["@sveltejs/kit"] != "3.2.0" || len(pkg.Dependencies) != 0 {
 		t.Fatalf("adapter must use the application's qualified Kit and dependencies: %s", raw)
 	}
 	if !slices.Contains(pkg.Files, "index.d.ts") {

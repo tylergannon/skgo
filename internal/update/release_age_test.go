@@ -213,7 +213,7 @@ func TestPublicUpdatePassesSelectedAdapterToGuard(t *testing.T) {
 						t.Fatal(err)
 					}
 					writeAlignmentFile(t, c.Dir, "pnpm-workspace.yaml", string(b)+"minimumReleaseAgeExclude: ['"+exception+"']\n")
-					writeAlignmentFile(t, c.Dir, "node_modules/@sveltejs/kit/package.json", `{"name":"@sveltejs/kit","version":"3.1.1"}`)
+					writeAlignmentFile(t, c.Dir, "node_modules/@sveltejs/kit/package.json", `{"name":"@sveltejs/kit","version":"3.2.0"}`)
 					writeAlignmentFile(t, c.Dir, "node_modules/@sveltejs/kit/src/core/postbuild/queue.js", string(kitQueue))
 					return nil, nil
 				case c.Name == "go" && slices.Equal(c.Args, []string{"get", "github.com/tylergannon/skgo@v0.28.2"}):

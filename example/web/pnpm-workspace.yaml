@@ -7,7 +7,7 @@ allowBuilds:
   esbuild: false
 minimumReleaseAgeExclude:
   - "@types/node@24.19.2"
-  - "@sveltejs/kit@3.1.1"
+  - "@sveltejs/kit@3.2.0"
   - "@voidzero-dev/vite-plus-core@1.3.0"
   - "@voidzero-dev/vite-plus-darwin-arm64@1.3.0"
   - "@voidzero-dev/vite-plus-darwin-x64@1.3.0"
@@ -26,7 +26,7 @@ minimumReleaseAgeExclude:
 overrides:
   "vite@*": "npm:@voidzero-dev/vite-plus-core@1.3.0"
 patchedDependencies:
-  "@sveltejs/kit@3.1.1": patches/skgo-kit-3.1.1-queue.patch
+  "@sveltejs/kit@3.2.0": patches/skgo-kit-3.2.0-queue.patch
 peerDependencyRules:
   allowedVersions:
     vite: "1.3.0"
