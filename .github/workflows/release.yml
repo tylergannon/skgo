@@ -409,3 +409,20 @@ jobs:
             exit 0
           fi
           go run ./cmd/skgo-release tap homebrew-tap "$VERSION"
+
+      # workflow_run can distinguish publication from a successful publish=false run.
+      - name: Record the published official core identity
+        env:
+          CORE_VERSION: ${{ needs.source.outputs.version }}
+          CORE_SOURCE_SHA: ${{ needs.source.outputs.candidate }}
+        run: |
+          mkdir -p core-release-identity
+          jq -n --arg core_version "$CORE_VERSION" --arg core_source_sha "$CORE_SOURCE_SHA" --argjson core_run "$GITHUB_RUN_ID" \
+            '{core_version: $core_version, core_source_sha: $core_source_sha, core_run: $core_run}' > core-release-identity/core-release.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: core-release-identity
+          path: core-release-identity/core-release.json
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: true

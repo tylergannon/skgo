@@ -1,0 +1,8 @@
+# Native release automation
+
+decision: Native versions are reserved with immutable `plugins/native-shell/vX.Y.Z` tags before building. Pending/failed candidates consume versions; gaps are safe and prevent concurrent candidates from receiving the same version.
+decision: The core Release publishes a public identity artifact only after publication succeeds. Native workflow_run consumers read this artifact, verify its run and published tag, and build against the downloaded official executable. Plugin source identity remains distinct from the core tag identity.
+decision: Qualification promotes the original run-attempt artifact, including its manifest, checksum and release notes. A rerun reuses an existing uploaded candidate instead of recompiling it.
+friction: Installed actionlint 1.7.12 does not understand GitHub's existing queue:max concurrency extension. Validate both changed workflows with only that line removed in stdin and the repository runner-label configuration; all remaining workflow/shell checks pass.
+decision: Candidate build and dispatch are separate jobs. A failed dispatch rerun can promote the original successful build attempt after the latest overall run succeeds; requiring the original whole attempt to succeed would make immutable bytes unrecoverable after a transient notification failure.
+decision: Freeze core Go/VitePlus/PNPM declarations and exact Node pin from the selected core commit, plus Zig/XcodeGen from the native source commit. Candidate toolchain metadata and generated notes travel with the original archive, avoiding stale frontend pins when core upgrades.
