@@ -11,3 +11,5 @@ The complete candidate → qualification → publication → published-install c
 The final recipe was rerun after splitting the PATH assignment/export for ShellCheck. It again exited 0 and built the application in a second fresh directory. Running that exact newly built executable with the argument `public-release-recipe-proof` exercised the generated Swift query and command; `query-command.log` records the actual before/after results. ShellCheck passes for the saved recipe.
 
 Machine-state scope: the final saved isolated recipe preserves the existing VitePlus default and disables shell-profile setup. An earlier exploratory recipe used a non-isolated `vp upgrade 1.3.0`, which changed the shared default; root restored the session's initial1.4.0 afterward. The saved successful proof describes the final isolated recipe only.
+
+The query/command log also contains `context deadline exceeded` from the pre-existing example host's graceful-shutdown timeout after both query results printed. This proof establishes the generated calls and build/open recipe; it does not establish a clean shutdown or broader application lifecycle behavior.
