@@ -1,0 +1,11 @@
+Computer-use observation selected this exact application path:
+/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.DmQ97d52xE/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app
+
+Window: "TinyNative", App: TinyNative.
+0 standard window TinyNative
+  1 container
+    2 text initial
+  3 close button
+  4 full screen button
+  5 minimize button
+  6 text TinyNative

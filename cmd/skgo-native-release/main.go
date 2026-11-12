@@ -327,8 +327,7 @@ func (c client) ownedReservation(version, source string) (bool, error) {
 	if strings.TrimSpace(tag.Message) != expected || tag.Object.Type != "commit" || tag.Object.SHA != source {
 		return false, nil
 	}
-	var published release
-	err = c.api("GET", "releases/tags/"+url.PathEscape("plugins/native-shell/"+version), nil, &published)
+	_, err = c.releaseByTag("plugins/native-shell/" + version)
 	if missing(err) {
 		return true, nil
 	}
@@ -734,12 +733,12 @@ func (c client) promote() error {
 	}
 	tag := "plugins/native-shell/" + r.Plugin
 	var rel release
-	err = c.api("GET", "releases/tags/"+url.PathEscape(tag), nil, &rel)
+	rel, err = c.releaseByTag(tag)
 	if missing(err) {
 		if err = runGH("release", "create", tag, "--repo", c.repo, "--verify-tag", "--latest=false", "--draft", "--title", "native-shell "+r.Plugin+" for skgo "+r.Core, "--notes-file", "candidate/notes.md", filepath.Join("candidate", r.Artifact), "candidate/checksums.txt", "candidate/candidate.json", "candidate/toolchain.json", "candidate/release.json"); err != nil {
 			return err
 		}
-		if err = c.api("GET", "releases/tags/"+url.PathEscape(tag), nil, &rel); err != nil {
+		if rel, err = c.releaseByTag(tag); err != nil {
 			return err
 		}
 	} else if err != nil {
@@ -753,7 +752,7 @@ func (c client) promote() error {
 		if err = runGH("release", "edit", tag, "--repo", c.repo, "--draft=false", "--latest=false", "--title", "native-shell "+r.Plugin+" for skgo "+r.Core, "--notes-file", "candidate/notes.md"); err != nil {
 			return err
 		}
-		if err = c.api("GET", "releases/tags/"+url.PathEscape(tag), nil, &rel); err != nil {
+		if rel, err = c.releaseByTag(tag); err != nil {
 			return err
 		}
 	}
@@ -868,7 +867,7 @@ func (c client) publishedPair(source, core, coreSource string) (bool, error) {
 			return false, err
 		}
 		for _, rel := range releases {
-			if !strings.HasPrefix(rel.Tag, "plugins/native-shell/") {
+			if rel.Draft || !strings.HasPrefix(rel.Tag, "plugins/native-shell/") {
 				continue
 			}
 			hasManifest := false
@@ -1023,4 +1022,37 @@ func (c client) stageDraft(rel release, m candidate) error {
 		}
 	}
 	return c.verifyPublished(rel, m, "staged", true)
+}
+
+// The tag endpoint returns published releases only. Drafts must be located by
+// listing releases; multiple drafts for one tag are ambiguous and never merged.
+func (c client) releaseByTag(tag string) (release, error) {
+	var rel release
+	err := c.api("GET", "releases/tags/"+url.PathEscape(tag), nil, &rel)
+	if !missing(err) {
+		return rel, err
+	}
+	notFound := err
+	var matches []release
+	for page := 1; ; page++ {
+		var list []release
+		if err = c.api("GET", fmt.Sprintf("releases?per_page=100&page=%d", page), nil, &list); err != nil {
+			return release{}, err
+		}
+		for _, r := range list {
+			if r.Tag == tag {
+				matches = append(matches, r)
+			}
+		}
+		if len(list) < 100 {
+			break
+		}
+	}
+	if len(matches) > 1 {
+		return release{}, fmt.Errorf("multiple releases/drafts for %s; refusing ambiguous publication", tag)
+	}
+	if len(matches) == 1 {
+		return matches[0], nil
+	}
+	return release{}, notFound
 }

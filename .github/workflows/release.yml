@@ -330,6 +330,7 @@ jobs:
 
   publish:
     if: github.event_name != 'workflow_dispatch' || inputs.publish
+    # skgo-native-release eligible matches this display name to skip publish=false.
     name: Publish GitHub Release and Homebrew cask
     needs: [source, linux-cli, macos-cli, adapter-npm, sv-package, sv-npm]
     runs-on: skgo-managed-linux

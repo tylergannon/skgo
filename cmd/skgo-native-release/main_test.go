@@ -265,10 +265,17 @@ func TestPromotionPublishesOriginalBytesAndRecoversNotification(t *testing.T) {
 	c := candidateAPI(t, m, archive, digest, func(w http.ResponseWriter, req *http.Request) bool {
 		switch req.URL.Path {
 		case "/repos/owner/product/releases/tags/plugins/native-shell/v0.1.1":
-			if !published {
+			if !published || rel.Draft {
 				http.NotFound(w, req)
 			} else {
 				send(w, rel)
+			}
+			return true
+		case "/repos/owner/product/releases":
+			if published {
+				send(w, []release{rel})
+			} else {
+				send(w, []release{})
 			}
 			return true
 		case "/repos/service/qualification/dispatches":
@@ -318,7 +325,7 @@ func TestPromotionPublishesOriginalBytesAndRecoversNotification(t *testing.T) {
 			}
 			published = true
 			rel.Draft = true
-			for _, name := range []string{m.Artifact, "checksums.txt", "candidate.json", "toolchain.json", "release.json"} {
+			for _, name := range []string{m.Artifact} {
 				var asset struct {
 					Name string `json:"name"`
 					URL  string `json:"browser_download_url"`
@@ -326,6 +333,25 @@ func TestPromotionPublishesOriginalBytesAndRecoversNotification(t *testing.T) {
 				asset.Name = name
 				rel.Assets = append(rel.Assets, asset)
 			}
+			return fmt.Errorf("transient upload failure after creating partial draft")
+		}
+		if args[1] == "upload" {
+			name := filepath.Base(args[len(args)-1])
+			for _, asset := range rel.Assets {
+				if asset.Name == name {
+					t.Fatal("attempted to overwrite draft asset", name)
+				}
+			}
+			b, err := os.ReadFile(args[len(args)-1])
+			if err != nil || !bytes.Equal(b, files[name]) {
+				t.Fatal("uploaded bytes differ", err)
+			}
+			var asset struct {
+				Name string `json:"name"`
+				URL  string `json:"browser_download_url"`
+			}
+			asset.Name = name
+			rel.Assets = append(rel.Assets, asset)
 			return nil
 		}
 		if args[1] == "edit" {
@@ -348,6 +374,12 @@ func TestPromotionPublishesOriginalBytesAndRecoversNotification(t *testing.T) {
 			return os.WriteFile(filepath.Join(dir, name), files[name], 0644)
 		}
 		return fmt.Errorf("unexpected gh %v", args)
+	}
+	if err := c.promote(); err == nil || !strings.Contains(err.Error(), "partial draft") {
+		t.Fatalf("partial draft upload must fail visibly: %v", err)
+	}
+	if creates != 1 || notifications != 0 {
+		t.Fatal("partial draft was published or notified")
 	}
 	if err := c.promote(); err == nil || !strings.Contains(err.Error(), "503") {
 		t.Fatalf("first notification should fail visibly: %v", err)
@@ -595,6 +627,8 @@ func TestUnbuiltReservationCanResumeOnlyItsOriginalRun(t *testing.T) {
 					send(w, map[string]any{"message": fmt.Sprintf("native-shell candidate run=%d source=%s", owner, source), "object": map[string]string{"type": "commit", "sha": source}})
 				case r.URL.Path == "/repos/owner/product/releases/tags/plugins/native-shell/v0.1.1":
 					http.NotFound(w, r)
+				case r.URL.Path == "/repos/owner/product/releases":
+					send(w, []release{})
 				default:
 					t.Fatal(r.URL)
 				}
@@ -718,5 +752,26 @@ func TestDraftRecoveryUploadsOnlyMissingOriginalAssets(t *testing.T) {
 	}
 	if uploads != before {
 		t.Fatal("conflict caused an asset upload")
+	}
+}
+
+func TestDraftLookupRejectsDuplicatePendingTags(t *testing.T) {
+	calls := 0
+	c := serve(t, func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/releases/tags/") {
+			http.NotFound(w, r)
+			return
+		}
+		if r.URL.Path != "/repos/owner/product/releases" {
+			t.Fatal(r.URL)
+		}
+		calls++
+		send(w, []release{{ID: 1, Tag: "plugins/native-shell/v0.1.1", Draft: true}, {ID: 2, Tag: "plugins/native-shell/v0.1.1", Draft: true}})
+	})
+	if _, err := c.releaseByTag("plugins/native-shell/v0.1.1"); err == nil || !strings.Contains(err.Error(), "multiple") {
+		t.Fatal("ambiguous drafts accepted", err)
+	}
+	if calls != 1 {
+		t.Fatal(calls)
 	}
 }
