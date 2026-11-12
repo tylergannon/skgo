@@ -67,7 +67,9 @@ type Host struct {
 	done              chan struct{}
 	mu                sync.Mutex
 	controlErr        error
+	processErr        error // published by closing done
 	closeOnce         sync.Once
+	closeErr          error
 	options           HostOptions
 	binary            string
 	analysis          retainedAnalysis
@@ -89,6 +91,8 @@ type hostReply struct {
 	Error   string
 	Rebuild bool
 }
+
+const hostShutdownTimeout = 30 * time.Second
 
 // CompileHost prepares the executable without running application initialization.
 // The caller can keep its healthy host serving until compilation has succeeded.
@@ -331,6 +335,11 @@ func (h *Host) Start(ctx context.Context, dist string) (err error) {
 	h.commands = commandWrite
 	h.replies = replyRead
 	h.cmd = exec.CommandContext(ctx, h.binary)
+	// The development session's signal context is also cancelled on ordinary
+	// shutdown. Use the same graceful EOF path as Close, rather than exec's
+	// default Process.Kill, so generated main can drain application owners.
+	h.cmd.Cancel = func() error { _ = commandWrite.Close(); return nil }
+	h.cmd.WaitDelay = hostShutdownTimeout
 	h.cmd.Dir = o.Inputs.Dir
 	h.cmd.Env = append(append([]string(nil), o.Inputs.Env...), "SKGO_DEV_ORIGIN="+o.Origin, "SKGO_DEV_DIST="+dist, "SKGO_DEV_SOCKET="+o.SocketPath, "SKGO_DEV_SERVICE_SECRET="+o.ServiceSecret, "SKGO_DEV_NATIVE_KIT="+strconv.FormatBool(o.NativeKit))
 	h.cmd.ExtraFiles = []*os.File{commandRead, replyWrite}
@@ -347,7 +356,16 @@ func (h *Host) Start(ctx context.Context, dist string) (err error) {
 	commandRead.Close()
 	replyWrite.Close()
 	cmd, done := h.cmd, h.done
-	go func() { _ = cmd.Wait(); close(done) }()
+	go func() {
+		err := cmd.Wait()
+		// Graceful context cancellation can return ctx.Err even when main
+		// completed all cleanup and exited successfully. A killed or crashed
+		// child, including WaitDelay's fallback, must not look like clean Close.
+		if err != nil && (cmd.ProcessState == nil || !cmd.ProcessState.Success()) {
+			h.processErr = fmt.Errorf("native host exited without graceful shutdown: %w", err)
+		}
+		close(done)
+	}()
 	defer func() {
 		if err != nil {
 			_ = h.Close()
@@ -423,8 +441,23 @@ func (h *Host) Done() <-chan struct{} { return h.done }
 func (h *Host) Close() error {
 	h.closeOnce.Do(func() {
 		if h.cmd != nil && h.cmd.Process != nil {
-			_ = h.cmd.Process.Kill()
-			<-h.done
+			// EOF asks generated main to stop accepting requests, drain every
+			// generation, and run application cleanup before exiting.
+			if h.commands != nil {
+				_ = h.commands.Close()
+			}
+			timer := time.NewTimer(hostShutdownTimeout)
+			select {
+			case <-h.done:
+			case <-timer.C:
+				h.closeErr = fmt.Errorf("native host shutdown timed out; forced child exit")
+				_ = h.cmd.Process.Kill()
+				<-h.done
+			}
+			timer.Stop()
+			if h.closeErr == nil {
+				h.closeErr = h.processErr
+			}
 		}
 		if h.commands != nil {
 			h.commands.Close()
@@ -438,7 +471,7 @@ func (h *Host) Close() error {
 		}
 		h.analysis.close()
 	})
-	return nil
+	return h.closeErr
 }
 func (h *Host) receive(ctx context.Context, r *hostReply) error {
 	deadline, ok := ctx.Deadline()
@@ -697,7 +730,7 @@ func injectCarry(pkg *packages.Package, name string, body []byte) ([]byte, error
 }
 func hostSource(app, function string, paths []string, nativeKit bool) ([]byte, error) {
 	var b strings.Builder
-	b.WriteString("package main\nimport(\"encoding/json\";\"fmt\";\"net\";\"net/http\";\"os\";\"strings\";\"sync\";\"io\";\"io/fs\";\"path/filepath\"\n")
+	b.WriteString("package main\nimport(\"context\";\"errors\";\"encoding/json\";\"os/signal\";\"syscall\";\"fmt\";\"net\";\"net/http\";\"os\";\"strings\";\"sync\";\"io\";\"io/fs\";\"path/filepath\"\n")
 	fmt.Fprintf(&b, "app %q\n", app)
 	b.WriteString("skgo \"github.com/tylergannon/skgo\"\n")
 	if len(paths) > 0 {
@@ -706,7 +739,24 @@ func hostSource(app, function string, paths []string, nativeKit bool) ([]byte, e
 	for i, p := range paths {
 		fmt.Fprintf(&b, "hot%d %q\n", i, p)
 	}
-	b.WriteString(")\ntype candidate struct{Object string;Storage []string;Reclaim bool}\ntype command struct{Op,Package,Dist string;Candidate candidate}\ntype reply struct{URL string;PID int;Error string;Rebuild bool}\nfunc main(){enc:=json.NewEncoder(os.NewFile(4,\"replies\"));fail:=func(e error){enc.Encode(reply{Error:e.Error()})}\n")
+	b.WriteString(")\n" + hostHandlerRuntime + "\ntype candidate struct{Object string;Storage []string;Reclaim bool}\ntype command struct{Op,Package,Dist string;Candidate candidate}\ntype reply struct{URL string;PID int;Error string;Rebuild bool}\nfunc main(){enc:=json.NewEncoder(os.NewFile(4,\"replies\"));fail:=func(e error){enc.Encode(reply{Error:e.Error()})}\n")
+	b.WriteString(`
+ // Terminal signals can reach this child directly as well as its parent.
+ // Keep signal handling outside the blocking inherited control-pipe read.
+ commands:=os.NewFile(3,"commands")
+ signals:=make(chan os.Signal,1)
+ signal.Notify(signals,os.Interrupt,syscall.SIGTERM)
+ defer signal.Stop(signals)
+ stopped:=make(chan struct{})
+ defer close(stopped)
+ type decodedCommand struct{command command;err error}
+ control:=make(chan decodedCommand)
+ go func(){
+  dec:=json.NewDecoder(commands)
+  for{var c command;e:=dec.Decode(&c);select{case control<-decodedCommand{c,e}:case <-stopped:return};if e!=nil{return}}
+ }()
+
+ `)
 	if len(paths) > 0 {
 		b.WriteString("symbols:=map[string]uintptr{};if e:=loader.RegSymbol(symbols);e!=nil{fail(e);return}\n")
 	}
@@ -717,11 +767,52 @@ func hostSource(app, function string, paths []string, nativeKit bool) ([]byte, e
 	if nativeKit {
 		arguments += ",native"
 	}
-	fmt.Fprintf(&b, "origin:=os.Getenv(\"SKGO_DEV_ORIGIN\");var mu sync.RWMutex;var handler http.Handler;var nativeClose func();defer func(){if nativeClose!=nil{nativeClose()}}();reload:=func(dist string)error{var buildfs fs.FS=os.DirFS(dist);var native *skgo.NativeDevelopment;if os.Getenv(\"SKGO_DEV_NATIVE_KIT\")==\"true\"{native=skgo.NewNativeDevelopment(os.Getenv(\"SKGO_DEV_SERVICE_SECRET\"),filepath.Join(filepath.Dir(os.Getenv(\"SKGO_DEV_SOCKET\")),\"vite.sock\"));};h,e:=app.%s(%s);if e!=nil{return e};if native!=nil{var close func();h,close,e=native.Handler(h);if e!=nil{return e};if nativeClose!=nil{nativeClose()};nativeClose=close};", function, arguments)
+	fmt.Fprintf(&b, `origin:=os.Getenv("SKGO_DEV_ORIGIN")
+ var mu sync.Mutex
+ var current *handlerGeneration
+ var owners sync.WaitGroup
+ retire:=func(g *handlerGeneration){if g!=nil{g.retire(&owners)}}
+ defer func(){retire(current);owners.Wait()}()
+ reload:=func(dist string)error{
+  var buildfs fs.FS=os.DirFS(dist)
+  var native *skgo.NativeDevelopment
+  if os.Getenv("SKGO_DEV_NATIVE_KIT")=="true"{native=skgo.NewNativeDevelopment(os.Getenv("SKGO_DEV_SERVICE_SECRET"),filepath.Join(filepath.Dir(os.Getenv("SKGO_DEV_SOCKET")),"vite.sock"))}
+  owner,e:=app.%s(%s)
+  if e!=nil{closeApplication(owner);return e}
+  if owner==nil{return fmt.Errorf("application constructor returned no handler")}
+  h:=owner
+  var bridgeClose func()
+  if native!=nil{
+   h,bridgeClose,e=native.Handler(owner)
+   if e!=nil{closeApplication(owner);return e}
+  }
+ `, function, arguments)
 	for i := range paths {
 		fmt.Fprintf(&b, "h=hot%d.SkgoHotHandler(h);", i)
 	}
-	b.WriteString("mu.Lock();handler=h;mu.Unlock();return nil};if e:=reload(os.Getenv(\"SKGO_DEV_DIST\"));e!=nil{fail(e);return};network,address:=\"tcp\",\"127.0.0.1:0\";if socket:=os.Getenv(\"SKGO_DEV_SOCKET\");socket!=\"\"{network,address=\"unix\",socket};listener,e:=net.Listen(network,address);if e!=nil{fail(e);return};defer listener.Close();server:=&http.Server{Handler:http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){mu.RLock();h:=handler;mu.RUnlock();h.ServeHTTP(w,r)})};defer server.Close();go server.Serve(listener);enc.Encode(reply{URL:\"http://\"+listener.Addr().String(),PID:os.Getpid()});dec:=json.NewDecoder(os.NewFile(3,\"commands\"));for{var c command;if e:=dec.Decode(&c);e!=nil{if e!=io.EOF{fmt.Fprintln(os.Stderr,e)};return};var e error;switch c.Op{case \"reload\":e=reload(c.Dist);case \"install\":switch c.Package{")
+	b.WriteString(`
+  next:=&handlerGeneration{handler:h,owner:owner,bridgeClose:bridgeClose,idle:make(chan struct{})}
+  owners.Add(1)
+  mu.Lock();previous:=current;current=next;mu.Unlock()
+  retire(previous)
+  return nil
+ }
+ if e:=reload(os.Getenv("SKGO_DEV_DIST"));e!=nil{fail(e);return}
+ network,address:="tcp","127.0.0.1:0"
+ if socket:=os.Getenv("SKGO_DEV_SOCKET");socket!=""{network,address="unix",socket}
+ listener,e:=net.Listen(network,address);if e!=nil{fail(e);return};defer listener.Close()
+ server:=&http.Server{Handler:http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+  mu.Lock();g:=current;g.acquire();mu.Unlock()
+  defer g.release()
+  g.handler.ServeHTTP(w,r)
+ })}
+ defer server.Shutdown(context.Background())
+ go server.Serve(listener)
+ enc.Encode(reply{URL:"http://"+listener.Addr().String(),PID:os.Getpid()})
+ for{var decoded decodedCommand;select{case <-signals:return;case decoded=<-control:}
+ if e:=decoded.err;e!=nil{if e!=io.EOF && !errors.Is(e,os.ErrClosed){fmt.Fprintln(os.Stderr,e)};return}
+ c:=decoded.command;var e error;switch c.Op{case "reload":e=reload(c.Dist);case "install":switch c.Package{
+ `)
 	for i, p := range paths {
 		fmt.Fprintf(&b, "case %s:e=hot%d.SkgoHotInstall(c.Candidate.Object,c.Candidate.Storage,c.Candidate.Reclaim);", strconv.Quote(p), i)
 	}

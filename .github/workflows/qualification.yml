@@ -110,7 +110,7 @@ jobs:
       - *mise
       - run: cd example/web && vp install --frozen-lockfile
       - name: Fresh compiler and process witnesses
-        run: go test -tags skgo_qualification -count=1 ./internal/gen ./internal/hotreload -run '^(TestTypedLoadActualParameterDependencies|TestGeneratedLanguageApplications|TestGenerationCacheFreshProcessesAndRecovery|TestATypeFromAnotherModuleCrossesTheWire|TestRetainedProjectSelectedCompilerInputs|TestAMigratedLinkTreeCompilesRouteEmbeds|TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost)$'
+        run: go test -tags skgo_qualification -count=1 ./internal/gen ./internal/hotreload -run '^(TestTypedLoadActualParameterDependencies|TestGeneratedLanguageApplications|TestGenerationCacheFreshProcessesAndRecovery|TestATypeFromAnotherModuleCrossesTheWire|TestRetainedProjectSelectedCompilerInputs|TestAMigratedLinkTreeCompilesRouteEmbeds|TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost|TestHostReloadRetiresIdleApplicationResource)$'
       - name: Independent generator and command fixture on the real CLI
         run: go test -tags skgo_qualification -count=1 ./cmd/skgo -run '^TestCapabilityPluginActualCLI$'
       - name: Production chunk fold and prerender ownership
@@ -136,7 +136,7 @@ jobs:
       - *mise
       - run: cd example/web && vp install --frozen-lockfile
       - name: Fresh Go host process witnesses
-        run: go test -tags skgo_qualification -count=1 ./internal/hotreload -run '^(TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost)$'
+        run: go test -tags skgo_qualification -count=1 ./internal/hotreload -run '^(TestGeneratedNativeHandlerContract|TestGeneratedNativeLifetime|TestCapturedNativeHTTPHost|TestHostReloadRetiresIdleApplicationResource)$'
       - name: Native Darwin prerender process ownership
         run: go test -tags skgo_qualification -count=1 ./internal/adapter -run '^(TestPrerenderFailureWaitsForNativeExitedGroupReap|TestPrerenderFailedDrainRetainsOwnerAndCanRecover|TestPrerenderInterruptedFailedDrainExitsWithOriginalSignal)$' -v
 

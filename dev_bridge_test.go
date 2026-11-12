@@ -65,6 +65,79 @@ func beginNative(t *testing.T, h http.Handler) string {
 	}
 	return begin.Handle
 }
+
+// /fetch-begin returns a continuation while the Go HandleFetch goroutine is
+// still live. Closing the bridge must join that goroutine, not just HTTP calls
+// or the downstream middleware that originally established the logical owner.
+func TestNativeDevelopmentCloseJoinsFetchAfterHTTPReturn(t *testing.T) {
+	development := NewNativeDevelopment("secret")
+	loads, err := NewLoads(LoadConfig{Origin: "http://app.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remotes, err := NewRemotes(RemoteConfig{Origin: "http://app.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	using, release, used := make(chan struct{}), make(chan struct{}), make(chan string, 1)
+	defer func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	}()
+	_, err = development.NewSSR(fstest.MapFS{}, Manifest{}, loads, remotes, SSROptions{HandleFetch: func(ctx context.Context, r *http.Request, next Fetch) (*http.Response, error) {
+		response, err := next(r)
+		// Retirement cancels the suspended continuation. Its application hook
+		// still owns resources until its post-continuation work returns.
+		close(using)
+		<-release
+		used <- "literal-fetch-last-use-829"
+		return response, err
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pages, err := development.NewStaticHandler(fstest.MapFS{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, finish, err := development.Handler(pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handle := beginNative(t, handler)
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest("POST", "/_skgo/dev/fetch-begin", strings.NewReader(fmt.Sprintf(`{"handle":%q,"url":"http://app.test/inner","method":"GET"}`, handle)))
+	request.Header.Set("Authorization", "Bearer secret")
+	handler.ServeHTTP(response, request)
+	if response.Code != 200 || response.Header().Get("X-Skgo-Fetch-State") != "next" {
+		t.Fatalf("fetch-begin: %d %v %s", response.Code, response.Header(), response.Body.String())
+	}
+	finished := make(chan struct{})
+	go func() { finish(); close(finished) }()
+	select {
+	case <-using:
+	case <-time.After(10 * time.Second):
+		t.Fatal("fetch hook did not reach its final resource use")
+	}
+	select {
+	case <-finished:
+		t.Fatal("bridge closed before fetch hook finished")
+	default:
+	}
+	close(release)
+	select {
+	case <-finished:
+	case <-time.After(10 * time.Second):
+		t.Fatal("bridge did not join fetch hook")
+	}
+	if got := <-used; got != "literal-fetch-last-use-829" {
+		t.Fatal(got)
+	}
+}
+
 func TestNativeDevelopmentOriginalHookContextAndStreamedResponse(t *testing.T) {
 	load := NewServerLoad(LoadSpec{Module: "page", Run: func(ctx context.Context) (any, error) {
 		return map[string]any{"owner": RequestLocals[buildLocals](ctx).Value}, nil
