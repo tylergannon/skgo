@@ -41,6 +41,10 @@ type request struct {
 	ArtifactID     int64  `json:"candidate_artifact_id"`
 	ArtifactDigest string `json:"candidate_artifact_digest"`
 }
+type receipt struct {
+	Candidate    request `json:"candidate"`
+	ToolchainSHA string  `json:"toolchain_sha256"`
+}
 type artifact struct {
 	ID      int64  `json:"id"`
 	Name    string `json:"name"`
@@ -292,7 +296,48 @@ func nextVersion(tags []string) (string, error) {
 	}
 	return fmt.Sprintf("v%d.%d.%d", major, minor, patch+1), nil
 }
+func (c client) ownedReservation(version, source string) (bool, error) {
+	var ref struct {
+		Object struct {
+			SHA  string `json:"sha"`
+			Type string `json:"type"`
+		} `json:"object"`
+	}
+	err := c.api("GET", "git/ref/tags/"+url.PathEscape("plugins/native-shell/"+version), nil, &ref)
+	if missing(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if ref.Object.Type != "tag" {
+		return false, nil
+	}
+	var tag struct {
+		Message string `json:"message"`
+		Object  struct {
+			SHA  string `json:"sha"`
+			Type string `json:"type"`
+		} `json:"object"`
+	}
+	if err = c.api("GET", "git/tags/"+ref.Object.SHA, nil, &tag); err != nil {
+		return false, err
+	}
+	expected := fmt.Sprintf("native-shell candidate run=%d source=%s", envInt("GITHUB_RUN_ID"), source)
+	if strings.TrimSpace(tag.Message) != expected || tag.Object.Type != "commit" || tag.Object.SHA != source {
+		return false, nil
+	}
+	var published release
+	err = c.api("GET", "releases/tags/"+url.PathEscape("plugins/native-shell/"+version), nil, &published)
+	if missing(err) {
+		return true, nil
+	}
+	return false, err
+}
 func (c client) reserve(version, source string) (string, error) {
+	if envInt("GITHUB_RUN_ID") <= 0 {
+		return "", fmt.Errorf("version reservation requires a workflow run identity")
+	}
 	if version == "" {
 		var tags []string
 		for page := 1; ; page++ {
@@ -309,6 +354,19 @@ func (c client) reserve(version, source string) (string, error) {
 				break
 			}
 		}
+		for _, tag := range tags {
+			v := strings.TrimPrefix(tag, "plugins/native-shell/")
+			if v == tag || !versionRE.MatchString(v) {
+				continue
+			}
+			owned, err := c.ownedReservation(v, source)
+			if err != nil {
+				return "", err
+			}
+			if owned {
+				return v, nil
+			}
+		}
 		var err error
 		version, err = nextVersion(tags)
 		if err != nil {
@@ -318,7 +376,21 @@ func (c client) reserve(version, source string) (string, error) {
 	if !versionRE.MatchString(version) {
 		return "", fmt.Errorf("plugin version must be vX.Y.Z")
 	}
-	err := c.api("POST", "git/refs", map[string]string{"ref": "refs/tags/plugins/native-shell/" + version, "sha": source}, nil)
+	owned, err := c.ownedReservation(version, source)
+	if err != nil {
+		return "", err
+	}
+	if owned {
+		return version, nil
+	}
+	var tag struct {
+		SHA string `json:"sha"`
+	}
+	message := fmt.Sprintf("native-shell candidate run=%d source=%s", envInt("GITHUB_RUN_ID"), source)
+	if err = c.api("POST", "git/tags", map[string]string{"tag": "plugins/native-shell/" + version, "message": message, "object": source, "type": "commit"}, &tag); err != nil {
+		return "", err
+	}
+	err = c.api("POST", "git/refs", map[string]string{"ref": "refs/tags/plugins/native-shell/" + version, "sha": tag.SHA}, nil)
 	if err != nil {
 		return "", fmt.Errorf("reserve immutable plugin version %s: %w", version, err)
 	}
@@ -598,14 +670,14 @@ func (c client) authorize(r request, dir string) error {
 	}
 	return c.coreIdentity(r.Core, r.CoreSource)
 }
-func (c client) verifyPublished(rel release, m candidate, dir string) error {
-	if rel.Draft || rel.Prerelease || rel.Tag != "plugins/native-shell/"+m.Plugin {
+func (c client) verifyPublished(rel release, m candidate, dir string, allowDraft bool) error {
+	if rel.Draft && !allowDraft || rel.Prerelease || rel.Tag != "plugins/native-shell/"+m.Plugin {
 		return fmt.Errorf("existing release identity mismatch")
 	}
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	for _, name := range []string{m.Artifact, "checksums.txt", "candidate.json", "toolchain.json"} {
+	for _, name := range []string{m.Artifact, "checksums.txt", "candidate.json", "toolchain.json", "release.json"} {
 		if err := runGH("release", "download", rel.Tag, "--repo", c.repo, "--pattern", name, "--dir", dir, "--clobber"); err != nil {
 			return err
 		}
@@ -617,7 +689,26 @@ func (c client) verifyPublished(rel release, m candidate, dir string) error {
 	if actual != m {
 		return fmt.Errorf("published release differs from original candidate")
 	}
-	return verifyFiles(dir, m)
+
+	if err := verifyFiles(dir, m); err != nil {
+		return err
+	}
+	var proof receipt
+	if err := readJSON(filepath.Join(dir, "release.json"), &proof); err != nil {
+		return err
+	}
+	if proof.Candidate.candidate != m || proof.Candidate.ArtifactID <= 0 || !regexp.MustCompile(`^sha256:[0-9a-f]{64}$`).MatchString(proof.Candidate.ArtifactDigest) || !digestRE.MatchString(proof.ToolchainSHA) {
+		return fmt.Errorf("published receipt differs from candidate identity")
+	}
+	tools, err := os.ReadFile(filepath.Join(dir, "toolchain.json"))
+	if err != nil {
+		return err
+	}
+	sum := sha256.Sum256(tools)
+	if hex.EncodeToString(sum[:]) != proof.ToolchainSHA {
+		return fmt.Errorf("published toolchain differs from permanent receipt")
+	}
+	return nil
 }
 func (c client) promote() error {
 	if _, _, err := dispatchConfig(); err != nil {
@@ -633,11 +724,19 @@ func (c client) promote() error {
 	if err := c.authorize(r, "candidate"); err != nil {
 		return err
 	}
+	tools, err := os.ReadFile("candidate/toolchain.json")
+	if err != nil {
+		return err
+	}
+	toolSum := sha256.Sum256(tools)
+	if err = writeJSON("candidate/release.json", receipt{r, hex.EncodeToString(toolSum[:])}); err != nil {
+		return err
+	}
 	tag := "plugins/native-shell/" + r.Plugin
 	var rel release
-	err := c.api("GET", "releases/tags/"+url.PathEscape(tag), nil, &rel)
+	err = c.api("GET", "releases/tags/"+url.PathEscape(tag), nil, &rel)
 	if missing(err) {
-		if err = runGH("release", "create", tag, "--repo", c.repo, "--verify-tag", "--latest=false", "--title", "native-shell "+r.Plugin+" for skgo "+r.Core, "--notes-file", "candidate/notes.md", filepath.Join("candidate", r.Artifact), "candidate/checksums.txt", "candidate/candidate.json", "candidate/toolchain.json"); err != nil {
+		if err = runGH("release", "create", tag, "--repo", c.repo, "--verify-tag", "--latest=false", "--draft", "--title", "native-shell "+r.Plugin+" for skgo "+r.Core, "--notes-file", "candidate/notes.md", filepath.Join("candidate", r.Artifact), "candidate/checksums.txt", "candidate/candidate.json", "candidate/toolchain.json", "candidate/release.json"); err != nil {
 			return err
 		}
 		if err = c.api("GET", "releases/tags/"+url.PathEscape(tag), nil, &rel); err != nil {
@@ -646,10 +745,25 @@ func (c client) promote() error {
 	} else if err != nil {
 		return err
 	}
-	if err = c.verifyPublished(rel, r.candidate, "published"); err != nil {
+
+	if rel.Draft {
+		if err = c.stageDraft(rel, r.candidate); err != nil {
+			return err
+		}
+		if err = runGH("release", "edit", tag, "--repo", c.repo, "--draft=false", "--latest=false", "--title", "native-shell "+r.Plugin+" for skgo "+r.Core, "--notes-file", "candidate/notes.md"); err != nil {
+			return err
+		}
+		if err = c.api("GET", "releases/tags/"+url.PathEscape(tag), nil, &rel); err != nil {
+			return err
+		}
+	}
+	if err = c.verifyPublished(rel, r.candidate, "published", false); err != nil {
 		return err
 	}
 	if err = compareFile("candidate/toolchain.json", "published/toolchain.json"); err != nil {
+		return err
+	}
+	if err = compareFile("candidate/release.json", "published/release.json"); err != nil {
 		return err
 	}
 	return c.publishedNotification(r, rel)
@@ -671,6 +785,8 @@ func execute() error {
 		c.base = "https://api.github.com"
 	}
 	switch os.Args[1] {
+	case "eligible":
+		return c.eligible()
 	case "prepare":
 		if _, _, err := dispatchConfig(); err != nil {
 			return err
@@ -784,7 +900,7 @@ func (c client) publishedPair(source, core, coreSource string) (bool, error) {
 					os.RemoveAll(dir)
 					return false, fmt.Errorf("published pairing core source mismatch")
 				}
-				err = c.verifyPublished(rel, m, dir)
+				err = c.verifyPublished(rel, m, dir, false)
 				defer os.RemoveAll(dir)
 				if err != nil {
 					return false, err
@@ -797,22 +913,17 @@ func (c client) publishedPair(source, core, coreSource string) (bool, error) {
 					return false, fmt.Errorf("published pairing tag mismatch")
 				}
 
-				original, err := c.findCandidate(m.Run, "published-original")
-				if err != nil {
+				var proof receipt
+				if err = readJSON(filepath.Join(dir, "release.json"), &proof); err != nil {
 					return false, err
 				}
-				if original == nil || original.candidate != m {
-					return false, fmt.Errorf("published pairing has no matching authoritative candidate")
-				}
-				if err = c.authorize(*original, "published-original"); err != nil {
+				if err = c.coreIdentity(m.Core, m.CoreSource); err != nil {
 					return false, err
 				}
-				if err = compareFile("published-original/toolchain.json", filepath.Join(dir, "toolchain.json")); err != nil {
+				if err = c.publishedNotification(proof.Candidate, rel); err != nil {
 					return false, err
 				}
-				if err = c.publishedNotification(*original, rel); err != nil {
-					return false, err
-				}
+
 				fmt.Printf("Already published exact pairing: %s for %s at %s\n", rel.Tag, core, source)
 				return true, nil
 			}
@@ -837,4 +948,79 @@ func compareFile(a, b string) error {
 		return fmt.Errorf("published %s differs from original candidate", filepath.Base(a))
 	}
 	return nil
+}
+
+func (c client) eligible() error {
+	if os.Getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" {
+		return output("build", "true")
+	}
+	var event struct {
+		Run run `json:"workflow_run"`
+	}
+	if err := readJSON(os.Getenv("GITHUB_EVENT_PATH"), &event); err != nil {
+		return err
+	}
+	var upstream run
+	if err := c.api("GET", fmt.Sprintf("actions/runs/%d", event.Run.ID), nil, &upstream); err != nil {
+		return err
+	}
+	if upstream.Path != ".github/workflows/release.yml" || upstream.Conclusion != "success" || (upstream.Event != "push" && upstream.Event != "workflow_dispatch") {
+		return fmt.Errorf("not an eligible core Release")
+	}
+	var jobs struct {
+		Jobs []struct {
+			Name       string `json:"name"`
+			Conclusion string `json:"conclusion"`
+		} `json:"jobs"`
+	}
+	if err := c.api("GET", fmt.Sprintf("actions/runs/%d/jobs?per_page=100", upstream.ID), nil, &jobs); err != nil {
+		return err
+	}
+	for _, j := range jobs.Jobs {
+		if j.Name == "Publish GitHub Release and Homebrew cask" {
+			if j.Conclusion == "skipped" {
+				fmt.Println("Core Release did not publish; no native candidate is needed.")
+				return output("build", "false")
+			}
+			if j.Conclusion == "success" {
+				return output("build", "true")
+			}
+			return fmt.Errorf("core publishing job did not succeed")
+		}
+	}
+	return fmt.Errorf("core Release has no recognized publishing job")
+}
+
+func (c client) stageDraft(rel release, m candidate) error {
+	if !rel.Draft || rel.Prerelease || rel.Tag != "plugins/native-shell/"+m.Plugin {
+		return fmt.Errorf("not the requested native draft")
+	}
+	if err := os.MkdirAll("staged", 0755); err != nil {
+		return err
+	}
+	var missingAssets []string
+	for _, name := range []string{m.Artifact, "checksums.txt", "candidate.json", "toolchain.json", "release.json"} {
+		exists := false
+		for _, a := range rel.Assets {
+			if a.Name == name {
+				exists = true
+			}
+		}
+		if exists {
+			if err := runGH("release", "download", rel.Tag, "--repo", c.repo, "--pattern", name, "--dir", "staged", "--clobber"); err != nil {
+				return err
+			}
+			if err := compareFile(filepath.Join("candidate", name), filepath.Join("staged", name)); err != nil {
+				return fmt.Errorf("draft asset conflict: %w", err)
+			}
+		} else {
+			missingAssets = append(missingAssets, name)
+		}
+	}
+	for _, name := range missingAssets {
+		if err := runGH("release", "upload", rel.Tag, "--repo", c.repo, filepath.Join("candidate", name)); err != nil {
+			return err
+		}
+	}
+	return c.verifyPublished(rel, m, "staged", true)
 }

@@ -27,13 +27,33 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  NATIVE_RELEASE_DISPATCH_REPOSITORY: ${{ secrets.NATIVE_RELEASE_DISPATCH_REPOSITORY }}
-  NATIVE_RELEASE_DISPATCH_TOKEN: ${{ secrets.NATIVE_RELEASE_DISPATCH_TOKEN }}
-
 jobs:
-  candidate:
+  eligible:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    runs-on: skgo-managed-linux
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      build: ${{ steps.gate.outputs.build }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          cache: false
+      - name: Ignore successful core runner-only dry runs
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: go run ./cmd/skgo-native-release eligible
+
+  candidate:
+    needs: eligible
+    if: needs.eligible.outputs.build == 'true'
     runs-on: skgo-managed-macos
     timeout-minutes: 30
     permissions:
@@ -56,6 +76,9 @@ jobs:
           cache: false
       - name: Resolve official core identity and reserve or reuse the candidate
         id: prepare
+        env:
+          NATIVE_RELEASE_DISPATCH_REPOSITORY: ${{ secrets.NATIVE_RELEASE_DISPATCH_REPOSITORY }}
+          NATIVE_RELEASE_DISPATCH_TOKEN: ${{ secrets.NATIVE_RELEASE_DISPATCH_TOKEN }}
         run: go run ./cmd/skgo-native-release prepare
       - uses: jdx/mise-action@v4
         if: steps.prepare.outputs.reuse != 'true' && steps.prepare.outputs.published != 'true'
@@ -115,6 +138,8 @@ jobs:
       - name: Deliver the immutable candidate to configured qualification
         env:
           GH_TOKEN: ${{ github.token }}
+          NATIVE_RELEASE_DISPATCH_REPOSITORY: ${{ secrets.NATIVE_RELEASE_DISPATCH_REPOSITORY }}
+          NATIVE_RELEASE_DISPATCH_TOKEN: ${{ secrets.NATIVE_RELEASE_DISPATCH_TOKEN }}
         run: go run ./cmd/skgo-native-release notify
 
   publish:
@@ -134,4 +159,6 @@ jobs:
       - name: Verify qualification identity, publish original bytes and notify
         env:
           GH_TOKEN: ${{ github.token }}
+          NATIVE_RELEASE_DISPATCH_REPOSITORY: ${{ secrets.NATIVE_RELEASE_DISPATCH_REPOSITORY }}
+          NATIVE_RELEASE_DISPATCH_TOKEN: ${{ secrets.NATIVE_RELEASE_DISPATCH_TOKEN }}
         run: go run ./cmd/skgo-native-release promote

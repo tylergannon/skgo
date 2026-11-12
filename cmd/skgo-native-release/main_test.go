@@ -26,6 +26,9 @@ func fixture(t *testing.T) (candidate, map[string][]byte, []byte, string) {
 	manifest, _ := json.Marshal(m)
 	files := map[string][]byte{m.Artifact: plugin, "checksums.txt": []byte(m.SHA + "  " + m.Artifact + "\n"), "candidate.json": manifest, "notes.md": []byte("Frozen consumer instructions"), "toolchain.json": []byte(`{"go":"1.27.3","node":"24.22.0","vite_plus":"1.3.0","pnpm":"12.14.0","zig":"0.17.0","xcodegen":"2.46.0"}`)}
 	archive, digest := zipFiles(t, files)
+	toolSum := sha256.Sum256(files["toolchain.json"])
+	proof, _ := json.MarshalIndent(receipt{request{m, 71, digest}, hex.EncodeToString(toolSum[:])}, "", "  ")
+	files["release.json"] = append(proof, '\n')
 	return m, files, archive, digest
 }
 func zipFiles(t *testing.T, files map[string][]byte) ([]byte, string) {
@@ -99,8 +102,17 @@ func TestNextVersionIndependentNumericPatch(t *testing.T) {
 	}
 }
 func TestReservationNeverOverwritesExistingTag(t *testing.T) {
+	t.Setenv("GITHUB_RUN_ID", "42")
 	called := false
 	c := serve(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" {
+			send(w, map[string]any{"object": map[string]string{"type": "commit", "sha": strings.Repeat("a", 40)}})
+			return
+		}
+		if r.URL.Path == "/repos/owner/product/git/tags" {
+			send(w, map[string]string{"sha": strings.Repeat("c", 40)})
+			return
+		}
 		if r.Method != "POST" || r.URL.Path != "/repos/owner/product/git/refs" {
 			t.Fatal(r.Method, r.URL)
 		}
@@ -295,7 +307,7 @@ func TestPromotionPublishesOriginalBytesAndRecoversNotification(t *testing.T) {
 			if published {
 				return fmt.Errorf("attempted overwrite")
 			}
-			if !strings.Contains(strings.Join(args, " "), "--verify-tag --latest=false") {
+			if !strings.Contains(strings.Join(args, " "), "--verify-tag --latest=false --draft") {
 				t.Fatal(args)
 			}
 			for name, data := range files {
@@ -305,6 +317,22 @@ func TestPromotionPublishesOriginalBytesAndRecoversNotification(t *testing.T) {
 				}
 			}
 			published = true
+			rel.Draft = true
+			for _, name := range []string{m.Artifact, "checksums.txt", "candidate.json", "toolchain.json", "release.json"} {
+				var asset struct {
+					Name string `json:"name"`
+					URL  string `json:"browser_download_url"`
+				}
+				asset.Name = name
+				rel.Assets = append(rel.Assets, asset)
+			}
+			return nil
+		}
+		if args[1] == "edit" {
+			if !rel.Draft {
+				t.Fatal("attempted to edit published release")
+			}
+			rel.Draft = false
 			return nil
 		}
 		if args[1] == "download" {
@@ -372,7 +400,7 @@ func TestFreezeToolsUsesSelectedCoreDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, literal := range []string{"\"npm:vite-plus\" = \"1.4.2\"", "go = \"1.28.2\"", "node = \"26.3.1\"", "https://github.com/owner/product/releases/download/plugins/native-shell/v0.1.1/" + m.Artifact, "mise exec -- skgo plugin native-shell build --platform macos", "open native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app", "export GOWORK=off"} {
+	for _, literal := range []string{"VP_VERSION=1.4.2", "go = \"1.28.2\"", "node = \"26.3.1\"", "https://github.com/owner/product/releases/download/plugins/native-shell/v0.1.1/" + m.Artifact, "skgo plugin native-shell build --platform macos", "open native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app", "export GOWORK=off"} {
 		if !strings.Contains(notes, literal) {
 			t.Errorf("notes lack %q", literal)
 		}
@@ -414,10 +442,16 @@ func TestAutomaticCandidateUsesPublishedCoreIdentity(t *testing.T) {
 			send(w, []release{})
 		case "/repos/owner/product/tags":
 			send(w, []map[string]string{{"name": "plugins/native-shell/v0.1.9"}, {"name": "v0.46.0"}})
+		case "/repos/owner/product/git/ref/tags/plugins/native-shell/v0.1.9":
+			send(w, map[string]any{"object": map[string]string{"type": "commit", "sha": strings.Repeat("a", 40)}})
+		case "/repos/owner/product/git/ref/tags/plugins/native-shell/v0.1.10":
+			http.NotFound(w, r)
+		case "/repos/owner/product/git/tags":
+			send(w, map[string]string{"sha": strings.Repeat("c", 40)})
 		case "/repos/owner/product/git/refs":
 			var body map[string]string
 			json.NewDecoder(r.Body).Decode(&body)
-			if body["ref"] != "refs/tags/plugins/native-shell/v0.1.10" || body["sha"] != strings.Repeat("a", 40) {
+			if body["ref"] != "refs/tags/plugins/native-shell/v0.1.10" || body["sha"] != strings.Repeat("c", 40) {
 				t.Fatal(body)
 			}
 			reserved = true
@@ -485,5 +519,204 @@ func TestAuthorizationRejectsUnfinishedRunAndFailedBuild(t *testing.T) {
 				t.Fatal("unqualified run/build accepted")
 			}
 		})
+	}
+}
+
+func TestPublishedPairRecoveryUsesPermanentReceiptAfterArchiveExpiry(t *testing.T) {
+	workspace(t)
+	m, files, _, _ := fixture(t)
+	t.Setenv("NATIVE_RELEASE_DISPATCH_REPOSITORY", "service/qualification")
+	t.Setenv("NATIVE_RELEASE_DISPATCH_TOKEN", "dispatch-token")
+	var rel release
+	json.Unmarshal([]byte(`{"id":91,"tag_name":"plugins/native-shell/v0.1.1","html_url":"https://github.com/owner/product/releases/tag/plugins/native-shell/v0.1.1","assets":[{"name":"candidate.json"}]}`), &rel)
+	notifications := 0
+	c := serve(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/owner/product/releases":
+			send(w, []release{rel})
+		case "/repos/owner/product/git/ref/tags/plugins/native-shell/v0.1.1":
+			send(w, map[string]any{"object": map[string]string{"type": "commit", "sha": m.Source}})
+		case "/repos/owner/product/git/ref/tags/v0.46.0":
+			send(w, map[string]any{"object": map[string]string{"type": "commit", "sha": m.CoreSource}})
+		case "/repos/owner/product/releases/tags/v0.46.0":
+			send(w, release{Tag: m.Core})
+		case "/repos/service/qualification/dispatches":
+			notifications++
+			w.WriteHeader(204)
+		default:
+			t.Errorf("durable recovery must not need expiring Actions archive: %s", r.URL)
+			http.Error(w, "expired", 404)
+		}
+	})
+	originalGH := runGH
+	t.Cleanup(func() { runGH = originalGH })
+	runGH = func(args ...string) error {
+		if len(args) < 2 || args[0] != "release" || args[1] != "download" {
+			return fmt.Errorf("recovery attempted mutation: %v", args)
+		}
+		name, dir := "", ""
+		for i := 2; i < len(args)-1; i++ {
+			if args[i] == "--pattern" {
+				name = args[i+1]
+			}
+			if args[i] == "--dir" {
+				dir = args[i+1]
+			}
+		}
+		return os.WriteFile(filepath.Join(dir, name), files[name], 0644)
+	}
+	matched, err := c.publishedPair(m.Source, m.Core, m.CoreSource)
+	if err != nil || !matched || notifications != 1 {
+		t.Fatalf("durable recovery matched=%v notifications=%d err=%v", matched, notifications, err)
+	}
+	files["toolchain.json"] = []byte(`{"go":"99.0.0"}`)
+	if _, err = c.publishedPair(m.Source, m.Core, m.CoreSource); err == nil {
+		t.Fatal("altered permanent toolchain accepted")
+	}
+	if notifications != 1 {
+		t.Fatal("notified corrupt release")
+	}
+}
+
+func TestUnbuiltReservationCanResumeOnlyItsOriginalRun(t *testing.T) {
+	for _, owner := range []int64{42, 99} {
+		t.Run(fmt.Sprint(owner), func(t *testing.T) {
+			t.Setenv("GITHUB_RUN_ID", "42")
+			mutations := 0
+			source := strings.Repeat("a", 40)
+			c := serve(t, func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case r.Method == "POST":
+					mutations++
+					http.Error(w, "already exists", 422)
+				case r.URL.Path == "/repos/owner/product/git/ref/tags/plugins/native-shell/v0.1.1":
+					send(w, map[string]any{"object": map[string]string{"type": "tag", "sha": strings.Repeat("c", 40)}})
+				case r.URL.Path == "/repos/owner/product/git/tags/"+strings.Repeat("c", 40):
+					send(w, map[string]any{"message": fmt.Sprintf("native-shell candidate run=%d source=%s", owner, source), "object": map[string]string{"type": "commit", "sha": source}})
+				case r.URL.Path == "/repos/owner/product/releases/tags/plugins/native-shell/v0.1.1":
+					http.NotFound(w, r)
+				default:
+					t.Fatal(r.URL)
+				}
+			})
+			version, err := c.reserve("v0.1.1", source)
+			if owner == 42 {
+				if err != nil || version != "v0.1.1" || mutations != 0 {
+					t.Fatal(version, err, mutations)
+				}
+			} else if err == nil {
+				t.Fatal("another run's reservation was adopted")
+			}
+		})
+	}
+}
+func TestCoreDryRunIsSkippedBeforeNativeBuild(t *testing.T) {
+	workspace(t)
+	t.Setenv("GITHUB_EVENT_NAME", "workflow_run")
+	t.Setenv("GITHUB_EVENT_PATH", "event.json")
+	t.Setenv("GITHUB_OUTPUT", "outputs")
+	os.WriteFile("outputs", nil, 0600)
+	writeJSON("event.json", map[string]any{"workflow_run": map[string]int{"id": 15}})
+	c := serve(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/owner/product/actions/runs/15":
+			send(w, run{ID: 15, Path: ".github/workflows/release.yml", Event: "workflow_dispatch", Conclusion: "success"})
+		case "/repos/owner/product/actions/runs/15/jobs":
+			send(w, map[string]any{"jobs": []map[string]string{{"name": "Publish GitHub Release and Homebrew cask", "conclusion": "skipped"}}})
+		default:
+			t.Fatal("dry run attempted candidate activity", r.URL)
+		}
+	})
+	if err := c.eligible(); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile("outputs")
+	if string(b) != "build=false\n" {
+		t.Fatal(string(b))
+	}
+}
+
+func TestDraftRecoveryUploadsOnlyMissingOriginalAssets(t *testing.T) {
+	workspace(t)
+	m, files, _, _ := fixture(t)
+	os.Mkdir("candidate", 0755)
+	for name, data := range files {
+		os.WriteFile(filepath.Join("candidate", name), data, 0644)
+	}
+	rel := release{ID: 91, Tag: "plugins/native-shell/v0.1.1", Draft: true}
+	remote := map[string][]byte{m.Artifact: files[m.Artifact]}
+	updateAssets := func() {
+		rel.Assets = nil
+		for name := range remote {
+			var a struct {
+				Name string `json:"name"`
+				URL  string `json:"browser_download_url"`
+			}
+			a.Name = name
+			rel.Assets = append(rel.Assets, a)
+		}
+	}
+	updateAssets()
+	originalGH := runGH
+	t.Cleanup(func() { runGH = originalGH })
+	uploads := 0
+	failUpload := true
+	runGH = func(args ...string) error {
+		switch args[1] {
+		case "download":
+			name, dir := "", ""
+			for i := 2; i < len(args)-1; i++ {
+				if args[i] == "--pattern" {
+					name = args[i+1]
+				}
+				if args[i] == "--dir" {
+					dir = args[i+1]
+				}
+			}
+			data, ok := remote[name]
+			if !ok {
+				return fmt.Errorf("asset missing")
+			}
+			return os.WriteFile(filepath.Join(dir, name), data, 0644)
+		case "upload":
+			path := args[len(args)-1]
+			name := filepath.Base(path)
+			if _, exists := remote[name]; exists {
+				return fmt.Errorf("attempted overwrite of %s", name)
+			}
+			uploads++
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			remote[name] = data
+			if failUpload {
+				failUpload = false
+				return fmt.Errorf("transient response loss after upload")
+			}
+			return nil
+		default:
+			return fmt.Errorf("draft staging tried unsupported mutation %v", args)
+		}
+	}
+	c := client{repo: "owner/product"}
+	if err := c.stageDraft(rel, m); err == nil {
+		t.Fatal("upload failure not visible")
+	}
+	updateAssets()
+	if err := c.stageDraft(rel, m); err != nil {
+		t.Fatal(err)
+	}
+	if uploads != 4 {
+		t.Fatalf("uploaded %d assets, want4 missing assets", uploads)
+	}
+	updateAssets()
+	remote[m.Artifact] = []byte("conflicting staged bytes")
+	before := uploads
+	if err := c.stageDraft(rel, m); err == nil {
+		t.Fatal("conflicting draft bytes accepted")
+	}
+	if uploads != before {
+		t.Fatal("conflict caused an asset upload")
 	}
 }
