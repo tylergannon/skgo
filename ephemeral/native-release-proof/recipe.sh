@@ -34,7 +34,8 @@ mise trust
 export MISE_ACTIVATE_AGGRESSIVE=true
 mise install
 # Keep child processes on these pins even when a global shell config adds tools.
-export PATH="$workdir/bin:$(dirname "$(mise which go)"):$(dirname "$(mise which node)"):$(dirname "$global_vp"):$(dirname "$(mise which zig)"):$(dirname "$(mise which xcodegen)"):$PATH"
+PATH="$workdir/bin:$(dirname "$(mise which go)"):$(dirname "$(mise which node)"):$(dirname "$global_vp"):$(dirname "$(mise which zig)"):$(dirname "$(mise which xcodegen)"):$PATH"
+export PATH
 unset GOROOT
 export GOTOOLCHAIN=go1.27.3
 export VP_NODE_VERSION=24.22.0
