@@ -19,7 +19,7 @@ brew install --cask tylergannon/skgo/skgo
 Linux AMD64 and ARM64 binaries and checksums are available from
 [GitHub Releases](https://github.com/tylergannon/skgo/releases).
 
-Development requires Go **1.27.2**, [VitePlus](https://viteplus.dev) **1.3.0**,
+Development requires Go **1.27.4**, [VitePlus](https://viteplus.dev) **1.3.0**,
 Node `^22.18.0 || ^24.11.0 || >=26.0.0`, and [just](https://just.systems).
 The development server supports macOS ARM64 and Linux AMD64.
 

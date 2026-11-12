@@ -24,7 +24,7 @@ func fixture(t *testing.T) (candidate, map[string][]byte, []byte, string) {
 	sum := sha256.Sum256(plugin)
 	m.SHA = hex.EncodeToString(sum[:])
 	manifest, _ := json.Marshal(m)
-	files := map[string][]byte{m.Artifact: plugin, "checksums.txt": []byte(m.SHA + "  " + m.Artifact + "\n"), "candidate.json": manifest, "notes.md": []byte("Frozen consumer instructions"), "toolchain.json": []byte(`{"go":"1.27.3","node":"24.22.0","vite_plus":"1.3.0","pnpm":"12.14.0","zig":"0.17.0","xcodegen":"2.46.0"}`)}
+	files := map[string][]byte{m.Artifact: plugin, "checksums.txt": []byte(m.SHA + "  " + m.Artifact + "\n"), "candidate.json": manifest, "notes.md": []byte("Frozen consumer instructions"), "toolchain.json": []byte(`{"go":"1.27.4","node":"24.22.0","vite_plus":"1.3.0","pnpm":"12.14.0","zig":"0.17.0","xcodegen":"2.46.0"}`)}
 	archive, digest := zipFiles(t, files)
 	toolSum := sha256.Sum256(files["toolchain.json"])
 	proof, _ := json.MarshalIndent(receipt{request{m, 71, digest}, hex.EncodeToString(toolSum[:])}, "", "  ")
@@ -489,7 +489,7 @@ func TestAutomaticCandidateUsesPublishedCoreIdentity(t *testing.T) {
 			reserved = true
 			w.WriteHeader(201)
 		case "/repos/owner/product/contents/internal/toolchain/pins.go":
-			send(w, map[string]string{"encoding": "base64", "content": base64.StdEncoding.EncodeToString([]byte("const Go = \"1.27.3\"\nconst VitePlus = \"1.3.0\"\nconst PNPM = \"12.14.0\"\n"))})
+			send(w, map[string]string{"encoding": "base64", "content": base64.StdEncoding.EncodeToString([]byte("const Go = \"1.27.4\"\nconst VitePlus = \"1.3.0\"\nconst PNPM = \"12.14.0\"\n"))})
 		case "/repos/owner/product/contents/example/mise.toml":
 			send(w, map[string]string{"encoding": "base64", "content": base64.StdEncoding.EncodeToString([]byte("node = \"24.22.0\""))})
 		default:

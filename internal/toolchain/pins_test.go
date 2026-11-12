@@ -22,7 +22,7 @@ func read(t *testing.T, path string) string {
 }
 
 func TestGoMatchesModule(t *testing.T) {
-	for _, path := range []string{"../../go.mod", "../../go.work", "../../example/go.mod"} {
+	for _, path := range []string{"../../go.mod", "../../go.work", "../../example/go.mod", "../../plugins/cli/go.mod", "../../plugins/cli/example/go.mod", "../../plugins/native-client/go.mod", "../../plugins/native-shell/go.mod", "../../plugins/native-shell/example/go.mod", "../../plugins/windows-shell/go.mod"} {
 		want := "\ngo " + Go + "\n"
 		if !strings.Contains("\n"+read(t, path), want) {
 			t.Errorf("%s does not declare go %s", path, Go)

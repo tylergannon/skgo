@@ -186,7 +186,7 @@ func TestCapabilityPluginActualCLI(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(project, "go.mod"), []byte("module example.test/capability-consumer\n\ngo 1.27.1\nrequire github.com/tylergannon/skgo v0.0.0-capability\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(project, "go.mod"), []byte("module example.test/capability-consumer\n\ngo 1.27.4\nrequire github.com/tylergannon/skgo v0.0.0-capability\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(project, "skgo.json"), []byte(`{"version":1,"name":"CapabilityApp"}`), 0644); err != nil {
@@ -205,7 +205,7 @@ func TestCapabilityPluginActualCLI(t *testing.T) {
 		if err := os.MkdirAll(source, 0755); err != nil {
 			t.Fatal(err)
 		}
-		for name, data := range map[string][]byte{"main.go": fixture, "go.mod": []byte("module example.test/" + moduleName + "\n\ngo 1.27.1\nrequire github.com/tylergannon/skgo v0.0.0-capability\n")} {
+		for name, data := range map[string][]byte{"main.go": fixture, "go.mod": []byte("module example.test/" + moduleName + "\n\ngo 1.27.4\nrequire github.com/tylergannon/skgo v0.0.0-capability\n")} {
 			if err := os.WriteFile(filepath.Join(source, name), data, 0644); err != nil {
 				t.Fatal(err)
 			}

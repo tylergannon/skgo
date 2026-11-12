@@ -45,7 +45,7 @@ func TestNativeShellPluginsCoexist(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("go.mod", "module example.test/native-consumer\n\ngo 1.27.3\nrequire github.com/tylergannon/skgo v0.41.1-native-qualification\n")
+	write("go.mod", "module example.test/native-consumer\n\ngo 1.27.4\nrequire github.com/tylergannon/skgo v0.41.1-native-qualification\n")
 	write("skgo.json", `{"version":1,"name":"BothShells"}`)
 	write("internal/app/locals.go", "package app\ntype Locals struct{}\n")
 	if err := os.MkdirAll(filepath.Join(project, "web/src"), 0755); err != nil {

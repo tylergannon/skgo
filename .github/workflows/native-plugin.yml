@@ -43,7 +43,7 @@ jobs:
           ref: ${{ github.sha }}
       - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: go.mod
           cache: false
       - name: Ignore successful core runner-only dry runs
         id: gate
@@ -72,7 +72,7 @@ jobs:
           ref: ${{ github.sha }}
       - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: go.mod
           cache: false
       - name: Resolve official core identity and reserve or reuse the candidate
         id: prepare
@@ -133,7 +133,7 @@ jobs:
           ref: ${{ github.sha }}
       - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: go.mod
           cache: false
       - name: Deliver the immutable candidate to configured qualification
         env:
@@ -154,7 +154,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: go.mod
           cache: false
       - name: Verify qualification identity, publish original bytes and notify
         env:

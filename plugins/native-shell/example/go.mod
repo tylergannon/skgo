@@ -1,6 +1,6 @@
 module github.com/tylergannon/skgo/plugins/native-shell/example
 
-go 1.27.2
+go 1.27.4
 
 ignore (
 	./web/node_modules

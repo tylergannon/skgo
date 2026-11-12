@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"testing"
 )
@@ -118,5 +119,29 @@ func TestCleanupRefusesUnownedDirectory(t *testing.T) {
 	}
 	if _, err := os.Stat(dir); err != nil {
 		t.Fatal("runner temp directory removed")
+	}
+}
+
+// Release metadata must reject the superseded compiler even for the right tag.
+func TestReleaseToolchainIdentity(t *testing.T) {
+	if releaseGoVersion != "go1.27.4" {
+		t.Fatalf("release compiler = %q", releaseGoVersion)
+	}
+	for _, tc := range []struct {
+		name, compiler, path, version string
+		valid                         bool
+	}{
+		{"qualified", "go1.27.4", "github.com/tylergannon/skgo", "v1.2.3", true},
+		{"previous compiler", "go1.27.3", "github.com/tylergannon/skgo", "v1.2.3", false},
+		{"moving compiler", "go1.27.5", "github.com/tylergannon/skgo", "v1.2.3", false},
+		{"wrong module", "go1.27.4", "example.test/other", "v1.2.3", false},
+		{"wrong tag", "go1.27.4", "github.com/tylergannon/skgo", "v1.2.2", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			info := &debug.BuildInfo{GoVersion: tc.compiler, Main: debug.Module{Path: tc.path, Version: tc.version}}
+			if err := verifyReleaseIdentity(info, "v1.2.3"); (err == nil) != tc.valid {
+				t.Fatalf("identity validation: %v", err)
+			}
+		})
 	}
 }
