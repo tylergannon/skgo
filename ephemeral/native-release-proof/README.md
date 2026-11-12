@@ -9,3 +9,5 @@ Process inspection showed the launched executable belonged to this fresh directo
 The complete candidate → qualification → publication → published-install chain for the newly generated release remains a postmerge proof. The original Actions API and cross-repository protocol are additionally covered by focused HTTP/CLI fixture tests.
 
 The final recipe was rerun after splitting the PATH assignment/export for ShellCheck. It again exited 0 and built the application in a second fresh directory. Running that exact newly built executable with the argument `public-release-recipe-proof` exercised the generated Swift query and command; `query-command.log` records the actual before/after results. ShellCheck passes for the saved recipe.
+
+Machine-state scope: the final saved isolated recipe preserves the existing VitePlus default and disables shell-profile setup. An earlier exploratory recipe used a non-isolated `vp upgrade 1.3.0`, which changed the shared default; root restored the session's initial1.4.0 afterward. The saved successful proof describes the final isolated recipe only.
