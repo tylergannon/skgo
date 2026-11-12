@@ -45,7 +45,7 @@ func provisionalCapabilityHostVersion(t *testing.T, repo, root, version string) 
 	}
 	var files []modzip.File
 	for _, name := range strings.Split(strings.TrimSpace(string(listed)), "\n") {
-		if name == "" || strings.HasPrefix(name, "ephemeral/") || strings.HasPrefix(name, "example/") || strings.HasPrefix(name, "plugins/") || strings.HasPrefix(name, ".cache/") {
+		if name == "" || strings.HasPrefix(name, "ephemeral/") || strings.HasPrefix(name, "example/") || strings.HasPrefix(name, "plugins/") || strings.HasPrefix(name, ".cache/") || strings.HasPrefix(name, ".gimbal/") {
 			continue
 		}
 		full := filepath.Join(repo, filepath.FromSlash(name))
@@ -113,6 +113,26 @@ func provisionalCapabilityHostVersion(t *testing.T, repo, root, version string) 
 // extraction cache.
 func capabilityDependencyProxy(t *testing.T, repo string) string {
 	t.Helper()
+	// The offline consumer runs tidy, which also needs dependencies' tests.
+	// A normal build only downloads imported packages, so prepare the complete
+	// module graph before switching to the read-only proxy and isolated cache.
+	// Download may add checksums; keep those writes out of the source checkout.
+	modDir := t.TempDir()
+	for _, name := range []string{"go.mod", "go.sum"} {
+		data, err := os.ReadFile(filepath.Join(repo, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(modDir, name), data, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	prepare := exec.CommandContext(t.Context(), "go", "mod", "download", "-modfile="+filepath.Join(modDir, "go.mod"), "all")
+	prepare.Dir = repo
+	prepare.Env = append(os.Environ(), "GOWORK=off")
+	if output, err := prepare.CombinedOutput(); err != nil {
+		t.Fatalf("prepare offline consumer dependencies: %v\n%s", err, output)
+	}
 	cache := exec.CommandContext(t.Context(), "go", "env", "GOMODCACHE")
 	cache.Dir = repo
 	output, err := cache.Output()
