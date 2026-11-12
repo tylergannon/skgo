@@ -1,0 +1,1182 @@
+info: installing vite-plus@1.3.0...
+info: Preparing Node.js and pnpm...
+info: Installing dependencies...
+✓ Dependencies installed.
+Setup:
+  Preparing vite-plus environment.
+
+Created Shims:
+  /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/fallback-bin/node
+  /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/fallback-bin/npm
+  /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/fallback-bin/npx
+  /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/fallback-bin/pnpm
+  /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/fallback-bin/pnpx
+  /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/fallback-bin/pn
+  /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/fallback-bin/pnx
+  /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/fallback-bin/yarn
+  /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/fallback-bin/yarnpkg
+  /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/fallback-bin/bun
+  /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/fallback-bin/bunx
+  /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/bin/vpx
+  /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/bin/vpr
+
+Next Steps:
+  For Zsh, run:
+  . "/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/env"
+
+  If your .zshrc does not already load Vite+, add this command.
+
+  Restart an already-running IDE to load its environment. Run `vp env doctor` to verify.
+✓ Vite+ setup complete.
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 20.5M  100 20.5M    0     0  19.7M      0  0:00:01  0:00:01 --:--:-- 19.7M
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100   292  100   292    0     0    664      0 --:--:-- --:--:-- --:--:--   664
+skgo.tar.gz: OK
+{
+  "executable": "/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/skgo",
+  "skgoVersion": "v0.46.0",
+  "build": {
+    "GoVersion": "go1.27.3",
+    "Path": "github.com/tylergannon/skgo/cmd/skgo",
+    "Main": {
+      "Path": "github.com/tylergannon/skgo",
+      "Version": "v0.46.0",
+      "Sum": "h1:fZLpHssyE/ZBUCNWBbgyYkFc1axZP7EHZmukc9sx9lU="
+    },
+    "Deps": [
+      {
+        "Path": "github.com/cespare/xxhash/v2",
+        "Version": "v2.3.0",
+        "Sum": "h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs="
+      },
+      {
+        "Path": "github.com/dave/dst",
+        "Version": "v0.28.0",
+        "Sum": "h1:EIEuRC5XmVKuZF2OeyMahXX9ARVt6Xxr8vI0WtIY7K8="
+      },
+      {
+        "Path": "github.com/dlclark/regexp2/v2",
+        "Version": "v2.9.0",
+        "Sum": "h1:kKj+BlRuUhZzJk8B3yOBxWKxDFnx2Ilq4e7KNdq/Mxk="
+      },
+      {
+        "Path": "github.com/dop251/goja",
+        "Version": "v0.0.0-20261016120441-313b6b662e53",
+        "Sum": "h1:OXmDrMbrmLGQRes9eZhFAdPL6L6iPopUWFAHirf26KM="
+      },
+      {
+        "Path": "github.com/dop251/goja_nodejs",
+        "Version": "v0.0.0-20260918173711-b481721df8a2",
+        "Sum": "h1:4cOnoHK48VXmDGOPp2h+u7sYZw/1Ou2JbHjTgU0DF0A="
+      },
+      {
+        "Path": "github.com/fsnotify/fsnotify",
+        "Version": "v1.10.1",
+        "Sum": "h1:b0/UzAf9yR5rhf3RPm9gf3ehBPpf0oZKIjtpKrx59Ho="
+      },
+      {
+        "Path": "github.com/go-logr/logr",
+        "Version": "v1.4.4",
+        "Sum": "h1:tG4xh9yMsRCAiodLVTxyrkzSZ9+o0L1Kg/+cPVcbP/8="
+      },
+      {
+        "Path": "github.com/go-logr/stdr",
+        "Version": "v1.2.2",
+        "Sum": "h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag="
+      },
+      {
+        "Path": "github.com/go-sourcemap/sourcemap",
+        "Version": "v2.1.4+incompatible",
+        "Sum": "h1:a+iTbH5auLKxaNwQFg0B+TCYl6lbukKPc7b5x0n1s6Q="
+      },
+      {
+        "Path": "github.com/google/pprof",
+        "Version": "v0.0.0-20261016150608-1facf8f91b50",
+        "Sum": "h1:PlNWJRxu5APSV0pWqfIsZ0qt9OOGHSWfZQ4zvx+WgWs="
+      },
+      {
+        "Path": "github.com/tylergannon/devalue/v5",
+        "Version": "v5.0.0",
+        "Sum": "h1:UZuNeNpVXHnn79lOS/l7gEWcC4jKoILHUb0s3F2+3J8="
+      },
+      {
+        "Path": "github.com/tylergannon/polytype",
+        "Version": "v1.10.0",
+        "Sum": "h1:GBjoOATxJjHUbpq3s3mkU50pEwQEocT9/zMxWc3j2Ds="
+      },
+      {
+        "Path": "github.com/tylergannon/structtag",
+        "Version": "v0.1.0",
+        "Sum": "h1:Vn4ZEemGUtAfw9ddEtHQILKnIWqSWCSpciFTNPh1gcY="
+      },
+      {
+        "Path": "go.opentelemetry.io/auto/sdk",
+        "Version": "v1.2.1",
+        "Sum": "h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64="
+      },
+      {
+        "Path": "go.opentelemetry.io/otel",
+        "Version": "v1.47.0",
+        "Sum": "h1:j7ALJ/zgkS7Z6aeJW09p8VC9804bC+PpeTfCD4XPnOM="
+      },
+      {
+        "Path": "go.opentelemetry.io/otel/log",
+        "Version": "v1.47.0",
+        "Sum": "h1:cOTS1CcLbSQeZKanGJ+0JpF/+t4PELi3O3bbl2lqCcI="
+      },
+      {
+        "Path": "go.opentelemetry.io/otel/metric",
+        "Version": "v1.47.0",
+        "Sum": "h1:4PptaldXx3Eat1XjMZ68pPJEs5wrhlemctZE9a3UdWY="
+      },
+      {
+        "Path": "go.opentelemetry.io/otel/trace",
+        "Version": "v1.47.0",
+        "Sum": "h1:JOjX/Oci8K94QHddo+bbfya/Ai/nf6/dt9ZfrFNWSrM="
+      },
+      {
+        "Path": "golang.org/x/mod",
+        "Version": "v0.42.0",
+        "Sum": "h1:ICeL3t2L30ljSPHHxDnR4fqVcBt/zR2zJAb9juavmQg="
+      },
+      {
+        "Path": "golang.org/x/net",
+        "Version": "v0.61.0",
+        "Sum": "h1:RR+6j/BTBCrggOLugxa+66R8FvoN6MHlzDlZIbN9YFw="
+      },
+      {
+        "Path": "golang.org/x/sync",
+        "Version": "v0.24.0",
+        "Sum": "h1:iqiDrGoDgyuvAKrhLQthUEzU/R378N78gXbBjxed7oA="
+      },
+      {
+        "Path": "golang.org/x/sys",
+        "Version": "v0.49.0",
+        "Sum": "h1:XbzkgYJHdqh/8m2Uu0W/dQv8nktxx4BFHp1M0gROTXA="
+      },
+      {
+        "Path": "golang.org/x/term",
+        "Version": "v0.47.0",
+        "Sum": "h1:cpyOwQkr2Nzxe2p6KnrTG7Ei2wtzjsuSjhpXXepZ/BM="
+      },
+      {
+        "Path": "golang.org/x/text",
+        "Version": "v0.43.0",
+        "Sum": "h1:1QivrlhwAsnMOcqgOdl9my7s9OyZl8O5/UGUTJVXoWc="
+      },
+      {
+        "Path": "golang.org/x/tools",
+        "Version": "v0.52.0",
+        "Sum": "h1:ryxg4U63oaUYk7uOLTF37n43f4qgtGvqV4Ioit1BaEs="
+      },
+      {
+        "Path": "gopkg.in/yaml.v3",
+        "Version": "v3.0.1",
+        "Sum": "h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA="
+      }
+    ],
+    "Settings": [
+      {
+        "Key": "-buildmode",
+        "Value": "exe"
+      },
+      {
+        "Key": "-compiler",
+        "Value": "gc"
+      },
+      {
+        "Key": "-trimpath",
+        "Value": "true"
+      },
+      {
+        "Key": "CGO_ENABLED",
+        "Value": "1"
+      },
+      {
+        "Key": "GOARCH",
+        "Value": "arm64"
+      },
+      {
+        "Key": "GOOS",
+        "Value": "darwin"
+      },
+      {
+        "Key": "GOARM64",
+        "Value": "v8.0"
+      }
+    ]
+  }
+}
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 1870k    0 1870k    0     0  1444k      0 --:--:--  0:00:01 --:--:-- 1444k100 1870k    0 1870k    0     0  1443k      0 --:--:--  0:00:01 --:--:--     0
+mise trusted /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native
+mise by @jdx – installing 4 tools
+mise ⇢ go@1.27.3                       3ms · already installed
+mise ⇢ node@24.22.0                    1ms · already installed
+mise ⇢ zig@0.17.0                      0ms · already installed
+mise ⇢ aqua:yonaskolb/XcodeGen@2.46.0  0ms · already installed
+mise ████████████████ 4/4 · installed 0 tools · 4 already installed in 7ms
+mise all tools are installed
+VitePlus aligned: 1.3.0 at /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/.vite-plus/bin/vp.
+Selected adapter 0.46.0 and sv add-on 0.46.0 for skgo v0.46.0.
+Existing VitePlus project: aligning dependencies without source migration.
+Configured the Kit 3.1.1 prerender queue correction in /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-update-project-3414885358.
+Replaced the earlier correction @sveltejs/kit@3.1.0 (patches/skgo-kit-3.1.0-queue.patch).
+Files authored: /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-update-project-3414885358/package.json, /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-update-project-3414885358/patches/skgo-kit-3.1.1-queue.patch, and /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-update-project-3414885358/pnpm-workspace.yaml.
+Installation is still required: run `node_modules/.bin/vp install --no-frozen-lockfile` from /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-update-project-3414885358, then run `go tool skgo kit-patch --web /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-update-project-3414885358 --check` from the Go app root.
+✓ Lockfile passes supply-chain policies (verified 9d ago)
+Packages are cloned from the content-addressable store to the virtual store.
+  Content-addressable store is at: /Users/tyler/Library/pnpm/store/v11
+  Virtual store is at:             node_modules/.pnpm
+Packages: +108
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 108, reused 108, downloaded 0, added 108, done
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+devDependencies:
++ @skgo/sveltekit-adapter 0.46.0
++ @sveltejs/kit 3.1.1
++ @sveltejs/vite-plugin-svelte 7.3.1
++ @types/node 24.19.2
++ svelte 5.57.2
++ typescript 6.0.3
++ vite <- @voidzero-dev/vite-plus-core 1.3.0
++ vite-plus 1.3.0
+
+Done in 324ms using pnpm v12.14.0
+Verified @sveltejs/kit 3.1.1 and its installed prerender queue patch in /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/skgo-update-project-3414885358.
+go: upgraded go 1.27.2 => 1.27.3
+go: upgraded github.com/tylergannon/skgo v0.41.0 => v0.46.0
+Project Go tool verified: /Users/tyler/Library/Caches/go-build/1e/1e90aa33d29eb934aa884a493ec6419b45ca89486171e637e046a93c5b791759-d/skgo (v0.46.0).
+✓ Lockfile passes supply-chain policies (verified 1s ago)
+Lockfile is up to date, resolution step is skipped
+Packages are cloned from the content-addressable store to the virtual store.
+  Content-addressable store is at: /Users/tyler/Library/pnpm/store/v11
+  Virtual store is at:             node_modules/.pnpm
+Packages: +108
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 108, reused 108, downloaded 0, added 108, done
+
+devDependencies:
++ @skgo/sveltekit-adapter 0.46.0
++ @sveltejs/kit 3.1.1
++ @sveltejs/vite-plugin-svelte 7.3.1
++ @types/node 24.19.2
++ svelte 5.57.2
++ typescript 6.0.3
++ vite <- @voidzero-dev/vite-plus-core 1.3.0
++ vite-plus 1.3.0
+
+Done in 178ms using pnpm v12.14.0
+Verified @sveltejs/kit 3.1.1 and its installed prerender queue patch in /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/web.
+skgo: generation cache miss
+skgo: linked internal/skgo/_links/onzggl3sn52xizlt -> web/src/routes
+skgo: wrote /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/web/skgo.remotes.json
+skgo: wrote /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/web/src/routes/value.remote.ts
+note: You are running `vp build` as a Vite+ built-in command. If you meant to run the build npm script, use `vpr build` instead.
+skgo prerender service started (pid 15812)
+transforming...
+✓ 149 modules transformed.
+rendering chunks...
+computing gzip size...
+.svelte-kit/output/server/.vite/manifest.json                   4.80 kB │ gzip:  0.68 kB
+.svelte-kit/output/server/remote-entry.js                       0.10 kB │ gzip:  0.10 kB
+.svelte-kit/output/server/chunks/remote-uy1bk5.js               0.22 kB │ gzip:  0.14 kB
+.svelte-kit/output/server/env.js                                0.31 kB │ gzip:  0.19 kB │ map:   0.57 kB
+.svelte-kit/output/server/entries/hooks.server.js               0.39 kB │ gzip:  0.22 kB │ map:   0.58 kB
+.svelte-kit/output/server/entries/pages/_page.svelte.js         0.43 kB │ gzip:  0.30 kB │ map:   0.41 kB
+.svelte-kit/output/server/entries/fallbacks/layout.svelte.js    0.45 kB │ gzip:  0.33 kB │ map:   0.48 kB
+.svelte-kit/output/server/chunks/value.remote.js                1.15 kB │ gzip:  0.57 kB │ map:   0.86 kB
+.svelte-kit/output/server/entries/fallbacks/error.svelte.js     1.34 kB │ gzip:  0.53 kB │ map:   2.86 kB
+.svelte-kit/output/server/index.js                              2.40 kB │ gzip:  1.02 kB │ map:   3.46 kB
+.svelte-kit/output/server/chunks/uneval.js                     19.41 kB │ gzip:  5.37 kB │ map:  40.86 kB
+.svelte-kit/output/server/chunks/server-errors.js              24.28 kB │ gzip:  4.63 kB │ map:  35.01 kB
+.svelte-kit/output/server/chunks/server.js                     43.86 kB │ gzip: 12.05 kB │ map: 126.90 kB
+.svelte-kit/output/server/chunks/remote.js                     55.36 kB │ gzip: 11.97 kB │ map:  90.76 kB
+.svelte-kit/output/server/chunks/internal.js                  113.59 kB │ gzip: 30.19 kB │ map: 243.37 kB
+.svelte-kit/output/server/chunks/instance.js                  128.80 kB │ gzip: 33.84 kB │ map: 257.30 kB
+
+✓ built in 72ms
+Analysing routes
+(node:15796) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Building app
+transforming...
+✓ 194 modules transformed.
+rendering chunks...
+computing gzip size...
+.svelte-kit/output/client/_app/version.json                          0.02 kB │ gzip:  0.04 kB
+.svelte-kit/output/client/.vite/manifest.json                        4.72 kB │ gzip:  0.69 kB
+.svelte-kit/output/client/_app/immutable/chunks/D5lI08Td.js          0.05 kB │ gzip:  0.06 kB
+.svelte-kit/output/client/_app/immutable/entry/payload.DSmR2FwN.js   0.06 kB │ gzip:  0.07 kB
+.svelte-kit/output/client/_app/immutable/nodes/0.M9_Z4lTk.js         0.14 kB │ gzip:  0.14 kB
+.svelte-kit/output/client/_app/immutable/nodes/1.CLJZy9bZ.js         0.32 kB │ gzip:  0.24 kB
+.svelte-kit/output/client/_app/immutable/entry/start.Rcjn5CCJ.js     0.54 kB │ gzip:  0.32 kB
+.svelte-kit/output/client/_app/immutable/entry/app.CZVzyx3n.js       1.09 kB │ gzip:  0.55 kB
+.svelte-kit/output/client/_app/immutable/chunks/Bjy-W4x2.js          1.36 kB │ gzip:  0.65 kB
+.svelte-kit/output/client/_app/immutable/chunks/CRzLMJPS.js          1.53 kB │ gzip:  0.80 kB
+.svelte-kit/output/client/_app/immutable/chunks/imXK-Krn.js          4.74 kB │ gzip:  2.09 kB
+.svelte-kit/output/client/_app/immutable/nodes/2.C7HrMJTU.js         7.80 kB │ gzip:  3.15 kB
+.svelte-kit/output/client/_app/immutable/chunks/C0ZSFssc.js         33.55 kB │ gzip: 13.00 kB
+.svelte-kit/output/client/_app/immutable/chunks/3iDEuaXu.js         42.33 kB │ gzip: 15.50 kB
+
+✓ built in 85ms
+(node:15796) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Run npm run preview to preview your production build locally.
+
+> Using skgo
+(node:15796) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+transforming...
+✓ 150 modules transformed.
+rendering chunks...
+computing gzip size...
+build/.goja/bundle.js  201.94 kB │ gzip: 50.20 kB
+
+✓ built in 46ms
+skgo: lowered to es2017 for the engine's parser: 7 module(s)
+skgo: wrote build/
+skgo prerender service stopped (pid 15812)
+✔ done
+Update complete: CLI, VitePlus, compatible dependencies, generation and application build passed. Application source was preserved; templates were not replayed. Plugin updates remain explicit: select a prebuilt release matching the updated official host, or reinstall source providers for the executing host.
+Installed prebuilt native-shell@v0.1.0 for skgo v0.46.0 (/Users/tyler/.skgo/plugins/prebuilt/4516e490fa2f10ea98488c21f04e4b0699eb19aaedfb1159aba195441a906c0b/1956b2dc4c64b2e67d6cb91393ff2efa9fce8f4a4a7ddf05489d438223c13b8f/native-shell-v0.1.0-skgo-v0.46.0-darwin-arm64.so).
+Already up to date
+Done in 2ms using pnpm v12.14.0
+skgo: generation cache hit
+note: You are running `vp build` as a Vite+ built-in command. If you meant to run the build npm script, use `vpr build` instead.
+skgo prerender service started (pid 15950)
+transforming...
+✓ 149 modules transformed.
+rendering chunks...
+computing gzip size...
+.svelte-kit/output/server/.vite/manifest.json                   4.80 kB │ gzip:  0.68 kB
+.svelte-kit/output/server/remote-entry.js                       0.10 kB │ gzip:  0.10 kB
+.svelte-kit/output/server/chunks/remote-uy1bk5.js               0.22 kB │ gzip:  0.14 kB
+.svelte-kit/output/server/env.js                                0.31 kB │ gzip:  0.19 kB │ map:   0.57 kB
+.svelte-kit/output/server/entries/hooks.server.js               0.39 kB │ gzip:  0.22 kB │ map:   0.58 kB
+.svelte-kit/output/server/entries/pages/_page.svelte.js         0.43 kB │ gzip:  0.30 kB │ map:   0.41 kB
+.svelte-kit/output/server/entries/fallbacks/layout.svelte.js    0.45 kB │ gzip:  0.33 kB │ map:   0.48 kB
+.svelte-kit/output/server/chunks/value.remote.js                1.15 kB │ gzip:  0.57 kB │ map:   0.86 kB
+.svelte-kit/output/server/entries/fallbacks/error.svelte.js     1.34 kB │ gzip:  0.53 kB │ map:   2.86 kB
+.svelte-kit/output/server/index.js                              2.40 kB │ gzip:  1.02 kB │ map:   3.46 kB
+.svelte-kit/output/server/chunks/uneval.js                     19.41 kB │ gzip:  5.37 kB │ map:  40.86 kB
+.svelte-kit/output/server/chunks/server-errors.js              24.28 kB │ gzip:  4.63 kB │ map:  35.01 kB
+.svelte-kit/output/server/chunks/server.js                     43.86 kB │ gzip: 12.05 kB │ map: 126.90 kB
+.svelte-kit/output/server/chunks/remote.js                     55.36 kB │ gzip: 11.97 kB │ map:  90.76 kB
+.svelte-kit/output/server/chunks/internal.js                  113.59 kB │ gzip: 30.19 kB │ map: 243.37 kB
+.svelte-kit/output/server/chunks/instance.js                  128.80 kB │ gzip: 33.84 kB │ map: 257.30 kB
+
+✓ built in 63ms
+Analysing routes
+(node:15935) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Building app
+transforming...
+✓ 194 modules transformed.
+rendering chunks...
+computing gzip size...
+.svelte-kit/output/client/_app/version.json                          0.02 kB │ gzip:  0.04 kB
+.svelte-kit/output/client/.vite/manifest.json                        4.72 kB │ gzip:  0.69 kB
+.svelte-kit/output/client/_app/immutable/chunks/D5lI08Td.js          0.05 kB │ gzip:  0.06 kB
+.svelte-kit/output/client/_app/immutable/entry/payload.DSmR2FwN.js   0.06 kB │ gzip:  0.07 kB
+.svelte-kit/output/client/_app/immutable/nodes/0.M9_Z4lTk.js         0.14 kB │ gzip:  0.14 kB
+.svelte-kit/output/client/_app/immutable/nodes/1.CLJZy9bZ.js         0.32 kB │ gzip:  0.24 kB
+.svelte-kit/output/client/_app/immutable/entry/start.Rcjn5CCJ.js     0.54 kB │ gzip:  0.32 kB
+.svelte-kit/output/client/_app/immutable/entry/app.CZVzyx3n.js       1.09 kB │ gzip:  0.55 kB
+.svelte-kit/output/client/_app/immutable/chunks/Bjy-W4x2.js          1.36 kB │ gzip:  0.65 kB
+.svelte-kit/output/client/_app/immutable/chunks/CRzLMJPS.js          1.53 kB │ gzip:  0.80 kB
+.svelte-kit/output/client/_app/immutable/chunks/imXK-Krn.js          4.74 kB │ gzip:  2.09 kB
+.svelte-kit/output/client/_app/immutable/nodes/2.C7HrMJTU.js         7.80 kB │ gzip:  3.15 kB
+.svelte-kit/output/client/_app/immutable/chunks/C0ZSFssc.js         33.55 kB │ gzip: 13.00 kB
+.svelte-kit/output/client/_app/immutable/chunks/3iDEuaXu.js         42.33 kB │ gzip: 15.50 kB
+
+✓ built in 89ms
+(node:15935) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Run npm run preview to preview your production build locally.
+
+> Using skgo
+(node:15935) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+transforming...
+✓ 150 modules transformed.
+rendering chunks...
+computing gzip size...
+build/.goja/bundle.js  201.94 kB │ gzip: 50.20 kB
+
+✓ built in 46ms
+skgo: lowered to es2017 for the engine's parser: 7 module(s)
+skgo: wrote build/
+skgo prerender service stopped (pid 15950)
+✔ done
+skgo: wrote /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/internal/skgo/skgo.plugin-outputs.json
+skgo: wrote /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Generated.swift
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk
+⚙️  Generating plists...
+⚙️  Generating project...
+⚙️  Writing project...
+Created project at /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj -scheme TinyNative -configuration Debug -sdk macosx -derivedDataPath /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData build CODE_SIGNING_ALLOWED=NO
+
+Build settings from command line:
+    CODE_SIGNING_ALLOWED = NO
+    SDKROOT = macosx27.0
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  SKGoNative: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+
+2026-11-11 20:59:50.947 xcodebuild[16134:36030259] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00008142-00011148212B801C, name:My Mac }
+{ platform:macOS, name:Any Mac }
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (4 targets)
+    Target 'TinyNative' in project 'TinyNative'
+        ➜ Explicit dependency on target 'SKGoNative-product' in project 'SKGoNative'
+    Target 'SKGoNative-product' in project 'SKGoNative'
+        ➜ Explicit dependency on target 'SKGoNative' in project 'SKGoNative'
+        ➜ Explicit dependency on target 'CSKGo' in project 'SKGoNative'
+    Target 'SKGoNative' in project 'SKGoNative'
+        ➜ Explicit dependency on target 'CSKGo' in project 'SKGoNative'
+    Target 'CSKGo' in project 'SKGoNative' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 25a589c7b33cb12216418ecaef198fb0
+Build description path: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/XCBuildData/25a589c7b33cb12216418ecaef198fb0.xcbuilddata
+CreateBuildDirectory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-create-build-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules
+
+CreateBuildDirectory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-create-build-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex
+
+CreateBuildDirectory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/CompilationCache.noindex
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-create-build-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/CompilationCache.noindex
+
+CreateBuildDirectory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-create-build-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex
+
+CreateBuildDirectory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-create-build-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -o /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache
+
+CreateBuildDirectory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-create-build-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+CreateBuildDirectory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-create-build-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+CreateBuildDirectory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/PrecompiledHeaders
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-create-build-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/PrecompiledHeaders
+
+CreateBuildDirectory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/EagerLinkingTBDs/Debug
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-create-build-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/EagerLinkingTBDs/Debug
+
+CreateBuildDirectory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-create-build-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative-50d0b7fe970ce0c5bda72afda53dc88b-VFS/all-product-headers.yaml
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative-50d0b7fe970ce0c5bda72afda53dc88b-VFS/all-product-headers.yaml
+
+CreateBuildDirectory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-create-build-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-project-headers.hmap (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-project-headers.hmap
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative.DependencyStaticMetadataFileList (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative.hmap (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative.hmap
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative.DependencyMetadataFileList (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative.DependencyMetadataFileList
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/CSKGo.DependencyMetadataFileList (in target 'CSKGo' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/CSKGo.DependencyMetadataFileList
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/CSKGo.modulemap (in target 'CSKGo' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/CSKGo.modulemap
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/CSKGo.DependencyStaticMetadataFileList (in target 'CSKGo' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/CSKGo.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp (in target 'CSKGo' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp
+-fmodules -gmodules '-fmodules-cache-path=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex' '-fmodule-name=CSKGo' -fpascal-strings -O0 -DSWIFT_PACKAGE '-DDEBUG=1' -g -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/include -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/CSKGo/include -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/DerivedSources-normal/arm64 -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/DerivedSources/arm64 -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/DerivedSources -F/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -DXcode
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/CSKGo.LinkFileList (in target 'CSKGo' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/CSKGo.LinkFileList
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-own-target-headers.hmap (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-own-target-headers.hmap
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-generated-files.hmap (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-generated-files.hmap
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-all-target-headers.hmap (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-all-target-headers.hmap
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-DebugDylibPath-normal-arm64.txt (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-DebugDylibPath-normal-arm64.txt
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-all-non-framework-target-headers.hmap (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-DebugDylibInstallName-normal-arm64.txt (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-DebugDylibInstallName-normal-arm64.txt
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative_const_extract_protocols.json (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative_const_extract_protocols.json
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.SwiftConstValuesFileList (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.LinkFileList (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.LinkFileList
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.SwiftFileList (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.SwiftFileList
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative-OutputFileMap.json (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative-OutputFileMap.json
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/SKGoNative.modulemap (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/SKGoNative.modulemap
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/SKGoNative.DependencyStaticMetadataFileList (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/SKGoNative.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/SKGoNative.DependencyMetadataFileList (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/SKGoNative.DependencyMetadataFileList
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative_const_extract_protocols.json (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative_const_extract_protocols.json
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.SwiftFileList (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.SwiftFileList
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.SwiftConstValuesFileList (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative-OutputFileMap.json (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative-OutputFileMap.json
+
+WriteAuxiliaryFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.LinkFileList (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    write-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.LinkFileList
+
+Copy /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/CSKGo.modulemap /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/CSKGo.modulemap (in target 'CSKGo' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/CSKGo.modulemap /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps
+
+MkDir /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/MacOS (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    /bin/mkdir -p /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/MacOS
+
+Copy /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/SKGoNative.modulemap /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/SKGoNative.modulemap (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/SKGoNative.modulemap /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps
+
+MkDir /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    /bin/mkdir -p /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents
+
+MkDir /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    /bin/mkdir -p /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app
+
+ScanDependencies /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/bridge.o /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/CSKGo/bridge.c normal arm64 c com.apple.compilers.llvm.clang.1_0.compiler (in target 'CSKGo' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    
+    Using response file: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp
+    
+    builtin-ScanDependencies -o /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/bridge.o.scan -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x c -ivfsstatcache /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -target arm64-apple-macos13.0 -fmessage-length\=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit\=0 -fno-color-diagnostics -fmodules-prune-interval\=86400 -fmodules-prune-after\=345600 -fbuild-session-file\=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex/Session.modulevalidation -fmodules-validate-once-per-build-session -Wnon-modular-include-in-framework-module -Werror\=non-modular-include-in-framework-module -Wno-trigraphs -Wno-missing-field-initializers -Wno-missing-prototypes -Wno-return-type -Wno-missing-braces -Wparentheses -Wswitch -Wno-unused-function -Wno-unused-label -Wno-unused-parameter -Wno-unused-variable -Wunused-value -Wno-empty-body -Wno-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wno-constant-conversion -Wno-int-conversion -Wno-bool-conversion -Wno-enum-conversion -Wno-float-conversion -Wno-non-literal-null-conversion -Wno-objc-literal-conversion -Wshorten-64-to-32 -Wpointer-sign -Wno-newline-eof -Wno-implicit-fallthrough -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -fstrict-aliasing -Wdeprecated-declarations -Wno-sign-conversion -Wno-infinite-recursion -Wno-comma -Wno-block-capture-autoreleasing -Wno-strict-prototypes -Wno-semicolon-before-method-body -index-store-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Index.noindex/DataStore @/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp -MMD -MT dependencies -MF /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/bridge.d --serialize-diagnostics /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/bridge.dia -c /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/CSKGo/bridge.c -o /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/bridge.o -index-unit-output-path /SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/bridge.o
+
+SwiftDriver SKGoNative normal arm64 com.apple.xcode.tools.swift.compiler (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -parse-as-library -module-name SKGoNative -Onone @/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -Xcc -fmodule-map-file\=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/CSKGo.modulemap -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -target arm64-apple-macos13.0 -g -module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks -F /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -output-file-map /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex -sdk-module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name swift -emit-const-values -const-gather-protocols-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative_const_extract_protocols.json -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/CSKGo/include -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/include -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/DerivedSources-normal/arm64 -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/DerivedSources/arm64 -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative-Swift.h -working-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj -experimental-emit-module-separately -disable-cmo
+
+PrecompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stdarg-11AXRW62Q9TYKZSO9U6WIPIKJ.scan
+    cd /
+    builtin-precompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stdarg-11AXRW62Q9TYKZSO9U6WIPIKJ.scan
+
+PrecompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stddef-MUZHDEZOH0M7YFDQEGS5FXFK.scan
+    cd /
+    builtin-precompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stddef-MUZHDEZOH0M7YFDQEGS5FXFK.scan
+
+PrecompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/ptrcheck-47FFUFRC26HH0O8WOP5J37HR7.scan
+    cd /
+    builtin-precompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/ptrcheck-47FFUFRC26HH0O8WOP5J37HR7.scan
+
+PrecompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_float-3XV80LCHMMT4Y86XCVJKHWBUZ.scan
+    cd /
+    builtin-precompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_float-3XV80LCHMMT4Y86XCVJKHWBUZ.scan
+
+PrecompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_AvailabilityInternal-A4JH8OYNEAEVC2EKTX0PXBKJG.scan
+    cd /
+    builtin-precompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_AvailabilityInternal-A4JH8OYNEAEVC2EKTX0PXBKJG.scan
+
+PrecompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_DarwinFoundation1-1F7RV91FNXRTFRX85WFO4REL.scan
+    cd /
+    builtin-precompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_DarwinFoundation1-1F7RV91FNXRTFRX85WFO4REL.scan
+
+PrecompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_DarwinFoundation2-4U1DBEVMY1AXFC9W0Z8B4TRH7.scan
+    cd /
+    builtin-precompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_DarwinFoundation2-4U1DBEVMY1AXFC9W0Z8B4TRH7.scan
+
+PrecompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stdint-B2PHXJFDGOZS5U3A67WX1T04X.scan
+    cd /
+    builtin-precompileModule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules/_Builtin_stdint-B2PHXJFDGOZS5U3A67WX1T04X.scan
+
+CompileC /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/bridge.o /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/CSKGo/bridge.c normal arm64 c com.apple.compilers.llvm.clang.1_0.compiler (in target 'CSKGo' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    
+    Using response file: /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp
+    
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -x c -ivfsstatcache /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -target arm64-apple-macos13.0 -fmessage-length\=0 -fdiagnostics-show-note-include-stack -fmacro-backtrace-limit\=0 -fno-color-diagnostics -fmodules-prune-interval\=86400 -fmodules-prune-after\=345600 -fbuild-session-file\=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex/Session.modulevalidation -fmodules-validate-once-per-build-session -Wnon-modular-include-in-framework-module -Werror\=non-modular-include-in-framework-module -Wno-trigraphs -Wno-missing-field-initializers -Wno-missing-prototypes -Wno-return-type -Wno-missing-braces -Wparentheses -Wswitch -Wno-unused-function -Wno-unused-label -Wno-unused-parameter -Wno-unused-variable -Wunused-value -Wno-empty-body -Wno-uninitialized -Wno-unknown-pragmas -Wno-shadow -Wno-four-char-constants -Wno-conversion -Wno-constant-conversion -Wno-int-conversion -Wno-bool-conversion -Wno-enum-conversion -Wno-float-conversion -Wno-non-literal-null-conversion -Wno-objc-literal-conversion -Wshorten-64-to-32 -Wpointer-sign -Wno-newline-eof -Wno-implicit-fallthrough -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -fstrict-aliasing -Wdeprecated-declarations -Wno-sign-conversion -Wno-infinite-recursion -Wno-comma -Wno-block-capture-autoreleasing -Wno-strict-prototypes -Wno-semicolon-before-method-body -index-store-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Index.noindex/DataStore @/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/7187679823f38a2a940e0043cdf9d637-common-args.resp -MMD -MT dependencies -MF /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/bridge.d --serialize-diagnostics /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/bridge.dia -c /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/CSKGo/bridge.c -o /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/bridge.o -index-unit-output-path /SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/bridge.o
+
+Ld /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/CSKGo.o normal (in target 'CSKGo' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos13.0 -r -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -O0 -Xlinker -no_warn_duplicate_libraries -F/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -filelist /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/CSKGo.LinkFileList -nostdlib -Xlinker -object_path_lto -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/CSKGo_lto.o -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/CSKGo-t.build/Objects-normal/arm64/CSKGo_dependency_info.dat -o /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/CSKGo.o
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_stdbool-AGKU5YCQYK5LXZFAHULWU4EXD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_stdarg-EOSZ5C9Y63AOL9A8VBKZ5TC6Z.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/ptrauth-5PWP6H1BDWYZMFPOP0W5UHKVL.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_float-3Z6SM14GGTN0GIZA3QD70AJ7V.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_stddef-6CMI0ECZF45KZI39G6NLE49FX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/SwiftShims-59PH7J265B6E5FHWD7DNPPKT1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/ptrcheck-5HAAP3F0YEZZR7S8X3Q2YRIC7.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_AvailabilityInternal-96YN8ORSB9MSMFA0BPVMH1PM9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_SwiftConcurrencyShims-1O5KLOZTG6AKRDBXSEE25VTRR.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_DarwinFoundation1-AMNHNZRLGNAWX2YYVVYAYN280.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_DarwinFoundation2-6AH6NYW1FPPGTK8WXH64O0E0S.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_limits-CJH9YO1TPWGFWKCRG8M8DUDDK.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_stdint-844E872NVLQ5UD89NYSMEV274.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/string_h-2UMUJV5I7XXDD04TDVD0R88DR.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/sys_types-9D08WQGLHI7YR6DEH8B9F3WEZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/CSKGo-5LKGU1B3RVW42RCFPH144374S.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_DarwinFoundation3-8TF838WHW3A03QPHQJG8EX9C6.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/libDER-8QMSPET4K6Q4EGAO5CJXXFJXI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_inttypes-8ROL2N7IX56G89NMP8S0TFP6D.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/Darwin-41JCVHHPX34AYR2ZBVQOJS2IY.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/launch-C59A3J8VUT5BT5X2IS24YGKRC.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/libkern-9NC0PR5I3E0KWJA2IRWXBBU7I.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/MachO-DV9LKTRFXOJSH7MNQYQ3ZZS8K.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/ObjectiveC-4DAJU4OEL8EBL52KUNA8LDQQQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/os_object-1VZKWBGQ18VXYU9KVLH8G5DEI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/os_workgroup-1QETO5M96KQJXKQF5MP4BF54P.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/Dispatch-EEZRFZCA690LCBGK0SJLKWP5T.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/XPC-DHUIVRQEM6F4EAPTCV002W1FV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CoreFoundation-7D5N924Y6Y3CNA4UYVQCKWQZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/Security-8L3LU6275UNQ5B43JRJZB4L4L.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/IOKit-397JR1XN51ASZL0UNS8H26RSR.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CFNetwork-BSP1OJR9B42FWBE0AD2UJICMD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/DiskArbitration-8UEJXK4FK6WJW4HPRMGLZ041B.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CoreServices-CI03UPD6LFKGDGRO2B8SW5X5O.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/Foundation-1K2CVJ32EW2BWJKS8D2HO4LY4.pcm
+
+SwiftCompile normal arm64 Compiling\ RemoteClient.swift /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/SKGoNative/RemoteClient.swift (in target 'SKGoNative' from project 'SKGoNative')
+
+SwiftCompile normal arm64 /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/SKGoNative/RemoteClient.swift (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-SwiftPerFileCompile RemoteClient.swift
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ SKGoNative (in target 'SKGoNative' from project 'SKGoNative')
+
+SwiftCompile normal arm64 (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    
+
+SwiftCompile normal arm64 Compiling\ Query.swift /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/SKGoNative/Query.swift (in target 'SKGoNative' from project 'SKGoNative')
+
+SwiftCompile normal arm64 /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/SKGoNative/Query.swift (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-SwiftPerFileCompile Query.swift
+
+SwiftCompile normal arm64 Compiling\ Value.swift /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/SKGoNative/Value.swift (in target 'SKGoNative' from project 'SKGoNative')
+
+SwiftCompile normal arm64 /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/SKGoNative/Value.swift (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-SwiftPerFileCompile Value.swift
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for SKGoNative (in target 'SKGoNative' from project 'SKGoNative')
+
+SwiftDriver\ Compilation\ Requirements SKGoNative normal arm64 com.apple.xcode.tools.swift.compiler (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -parse-as-library -module-name SKGoNative -Onone @/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -Xcc -fmodule-map-file\=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/CSKGo.modulemap -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -target arm64-apple-macos13.0 -g -module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks -F /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -output-file-map /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex -sdk-module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name swift -emit-const-values -const-gather-protocols-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative_const_extract_protocols.json -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/CSKGo/include -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/include -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/DerivedSources-normal/arm64 -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/DerivedSources/arm64 -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative-Swift.h -working-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj -experimental-emit-module-separately -disable-cmo
+
+SwiftMergeGeneratedHeaders /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/SKGoNative-Swift.h /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative-Swift.h (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    builtin-swiftHeaderTool -arch arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative-Swift.h -o /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/SKGoNative-Swift.h
+
+Copy /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/SKGoNative.swiftmodule/arm64-apple-macos.swiftdoc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.swiftdoc (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.swiftdoc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/SKGoNative.swiftmodule/arm64-apple-macos.swiftdoc
+
+Copy /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/SKGoNative.swiftmodule/arm64-apple-macos.abi.json /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.abi.json (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.abi.json /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/SKGoNative.swiftmodule/arm64-apple-macos.abi.json
+
+Copy /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/SKGoNative.swiftmodule/arm64-apple-macos.swiftmodule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.swiftmodule (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.swiftmodule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/SKGoNative.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/SKGoNative.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.swiftsourceinfo (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.swiftsourceinfo /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/SKGoNative.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+SwiftDriver TinyNative normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TinyNative -Onone @/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.SwiftFileList -DDEBUG -Xcc -fmodule-map-file\=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/CSKGo.modulemap -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -target arm64-apple-macos14.0 -g -module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -F /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks -F /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -output-file-map /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex -sdk-module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative_const_extract_protocols.json -Xcc -iquote -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-generated-files.hmap -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-own-target-headers.hmap -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative-50d0b7fe970ce0c5bda72afda53dc88b-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-project-headers.hmap -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/CSKGo/include -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/include -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/DerivedSources-normal/arm64 -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/DerivedSources/arm64 -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative-Swift.h -import-objc-header /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Bridge.h -working-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos -experimental-emit-module-separately -disable-cmo
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_stddef-1E1GS81UNSPJEJBDD5DJP3880.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_stdarg-229WNG5DW76YW2KZBOP85CN07.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/DeveloperToolsSupport-9E3FD7ZL1CWHAYF5VR0X0RBNV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_float-3RBDC7QK553HUBK6CQCDQ10KT.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_AvailabilityInternal-EZQFP3QCRJZSY8442MSDW63KG.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_stdbool-8EHVDT8MEG6DNECF2FNSTF21O.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/ptrcheck-86LCTI7B9G7EMBD9O6ISJQLVG.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/ptrauth-2B72LHGJ6QMQT3B3DJJEZ3GSZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_SwiftConcurrencyShims-8MGU7DPR9W37WXWIX02WXDCFK.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/SwiftShims-7G34Y6H8EG5XZ2XQWB3UR205T.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_DarwinFoundation1-64TDMCBQ925R7Y57XXCRIDHNR.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_limits-6VPJMVJSLAHKCLVC3KBKA3UOG.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_DarwinFoundation2-DEN4GHD64I6INBZTZEMEESSRE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/sys_types-7WK1AMW5FBNQM69IVBOQI33SI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/string_h-E4ITI0O55WDH4HY2NEAPUNLQX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_stdint-699TQPX7WF8NKAACUEZTX88UH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_tgmath-2ILHAJ2T5Q2LH4XRFFIMV0ESW.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/CSKGo-CUY959DC9J668KE7GAG2ROIIC.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_stdatomic-4H7RHMLWNL6V57VYGTU6OV9G9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/libDER-9J073F92T1XDQJCN1556SJXHI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_DarwinFoundation3-P430QFC60ATONIM0DIRFZLFV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_intrinsics-9R6GQ807011FFYX3D62I83T24.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/_Builtin_inttypes-3NLAZTPE4RMX0Z1DUGI71Z52J.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/Darwin-3IX72A9YENZDW3FPS5YNXRM5U.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/simd-B9LLYOAFEX31EYMBJP1580CYH.pcm
+
+SwiftDriverJobDiscovery normal arm64 Compiling Value.swift (in target 'SKGoNative' from project 'SKGoNative')
+
+SwiftDriverJobDiscovery normal arm64 Compiling Query.swift (in target 'SKGoNative' from project 'SKGoNative')
+
+SwiftDriverJobDiscovery normal arm64 Compiling RemoteClient.swift (in target 'SKGoNative' from project 'SKGoNative')
+
+SwiftDriver\ Compilation SKGoNative normal arm64 com.apple.xcode.tools.swift.compiler (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -parse-as-library -module-name SKGoNative -Onone @/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -Xcc -fmodule-map-file\=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/CSKGo.modulemap -DXcode -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -target arm64-apple-macos13.0 -g -module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks -F /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -output-file-map /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex -sdk-module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name swift -emit-const-values -const-gather-protocols-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative_const_extract_protocols.json -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/CSKGo/include -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/include -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/DerivedSources-normal/arm64 -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/DerivedSources/arm64 -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative-Swift.h -working-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj -experimental-emit-module-separately -disable-cmo
+
+Ld /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/SKGoNative.o normal (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos13.0 -r -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -O0 -Xlinker -no_warn_duplicate_libraries -F/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks -F/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -filelist /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.LinkFileList -nostdlib -Xlinker -object_path_lto -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative_lto.o -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.swiftmodule -o /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/SKGoNative.o
+
+ExtractAppIntentsMetadata (in target 'SKGoNative' from project 'SKGoNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name SKGoNative --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk --xcode-version 27A266a --platform-family macOS --deployment-target 13.0 --bundle-identifier swift.SKGoNative --output /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/SKGoNative.appintents --target-triple arm64-apple-macos13.0 --binary-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/SKGoNative.o --dependency-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative_dependency_info.dat --stringsdata-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.SwiftFileList --metadata-file-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/SKGoNative.DependencyMetadataFileList --static-metadata-file-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/SKGoNative.DependencyStaticMetadataFileList --swift-const-vals-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SKGoNative.build/Debug/SKGoNative-t.build/Objects-normal/arm64/SKGoNative.SwiftConstValuesFileList --force --compile-time-extraction --deployment-aware-processing --no-app-shortcuts-localization
+2026-11-11 20:59:55.240 appintentsmetadataprocessor[16263:36030826] Starting appintentsmetadataprocessor export
+2026-11-11 20:59:55.298 appintentsmetadataprocessor[16263:36030826] Extracted no relevant App Intents symbols, skipping writing output
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/libkern-B5QTI7WTTHH55T614I3AP7YI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/launch-3LZK9IBG4Y8TEXYY76ZQDLZG1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/MachO-4RHHOIMC069P8OXJCTVQJJXU4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CUPS-A2O8D82BBG1SGROCCCWWVCHYB.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/Spatial-BBTLJFJBAL4GR8RPULN44DR2U.pcm
+
+Ld /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/MacOS/__preview.dylib normal (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -O0 -Xlinker -no_warn_duplicate_libraries -L/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -F/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks -F/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -install_name @rpath/TinyNative.debug.dylib -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative_dependency_info.dat -o /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/MacOS/__preview.dylib
+
+ProcessInfoPlistFile /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/Info.plist /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/Info.plist (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-infoPlistUtility /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/Info.plist -producttype com.apple.product-type.application -genpkginfo /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/PkgInfo -expandbuildsettings -platform macosx -o /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/Info.plist
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/ObjectiveC-4L82NEHB2SH95RY4N6QZWZEUM.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/os_object-2UC3M8O1HGEXYLEW7YHN3CXIP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/os_workgroup-CXXIU3JEHZSNBVFZD5PY31T2Z.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/Dispatch-2MUGZTPKMNVWVB1SZNQHT1W22.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/dnssd-7DIJT3F4CMGOA4LJCXWW6M1J9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/XPC-2CD94KZNS8FXDL372FK8SEY06.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CoreFoundation-KTL661E7HTB9JMCAZQU012O2.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/os-B4M83B8HIHQ7NBHJ26AOXSP9H.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/IOKit-545NU3QARRS93WLZ65K2YWWT3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CoreAudioTypes-8TSRC89O0WV39IOA0ODO30ZPJ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CFNetwork-67KFMF58QKH5L80UXXXM3E3CS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/Security-9MCCRFZGYYKJF9UP5X4OQN02R.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/ColorSync-A5X2H0FEMJ4ZS62LBB9TPJS6K.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CoreGraphics-1NUUD515G07K0290J423TYHS5.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/DiskArbitration-D307LJLZ2E2DO5VJVB5XT2ST5.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CoreServices-CD03FHQKOJVXXU1B87AIB5BWM.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CoreText-DD3VE214KBGO2R1NOGFQ4QKF6.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/ImageIO-60MIA513TL76H4HLYXX33MHT0.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/Foundation-4QG8Y9OQE1IOHMJOHUFO6353D.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/Symbols-7HZEYR1YDB4V7D8MTY1RQY843.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/ApplicationServices-CS29XNCNSVV0PBEMKC3QN3826.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CoreAudio-E1F8A7L1OMZZOSREW36NJHLJX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/DataDetection-2ITT2UR9P94CYKHB7MHZYUW14.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/Accessibility-9L6O7N35CUD9ENH6CKMWF86F3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/OSLog-5NHYRQKR1QV3DQHB23DQ74VZD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/UniformTypeIdentifiers-EJP2I0DUCE2L0Y5FJ6J6TLWFX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CoreData-6O9EIJS5HF8DSJGEFWKQUXOTA.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/Network-80WKA47XZOY1UPKZ3F39SF5NS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/IOSurface-4D11GO18CF241U4B0P48S6LTX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/JavaScriptCore-7BTSMH38K49WZ14ZC4V3K1L6Z.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CoreTransferable-80A0HGXODLZVHJ7JHFUF9DBPX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/OpenGL-EJUAQASVYE891ND7WMY1RSC7Y.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/Metal-489MY693PNEAK59Y6IQ1ZT5I2.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CoreVideo-91W2HJ94FFBRKMIUW7WK5GA5R.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CoreImage-3TXRWVNDON8DPY6J3PHTO7ENS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/QuartzCore-CN4X4X8KURM75S2YJPPFL5BGJ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/CoreMedia-19MYG22IQRP6AYPNI6BDXIM81.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/SwiftUICore-DKRE23ONO74K69PEDSJLX9UA7.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/AppKit-7ZTXX99XZYEW7PAF56YO1GUAA.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/WebKit-6TWGMSGE7I69PZTT7B6NPPXMO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules/SwiftUI-2OYNCM6Q82F3GPT0ARHEUYCIC.pcm
+
+SwiftGeneratePch normal arm64 Compiling\ bridging\ header (in target 'TinyNative' from project 'TinyNative')
+
+SwiftDriverJobDiscovery normal arm64 Compiling bridging header (in target 'TinyNative' from project 'TinyNative')
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ TinyNative (in target 'TinyNative' from project 'TinyNative')
+
+SwiftCompile normal arm64 (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    
+
+/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Sources/ApplicationWebView.swift:16:10: warning: instance method 'webView(_:decidePolicyFor:decisionHandler:)' nearly matches optional requirement 'webView(_:decidePolicyFor:decisionHandler:)' of protocol 'WKNavigationDelegate'
+14 |         if let url { webView.load(URLRequest(url: url)) }
+15 |     }
+16 |     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+   |          |- warning: instance method 'webView(_:decidePolicyFor:decisionHandler:)' nearly matches optional requirement 'webView(_:decidePolicyFor:decisionHandler:)' of protocol 'WKNavigationDelegate'
+   |          |- note: candidate has non-matching type '(WKWebView, WKNavigationAction, @escaping (WKNavigationActionPolicy) -> Void) -> ()'
+   |          |- note: move 'webView(_:decidePolicyFor:decisionHandler:)' to an extension to silence this warning
+   |          `- note: make 'webView(_:decidePolicyFor:decisionHandler:)' private to silence this warning
+17 |         guard let target = navigationAction.request.url, let url,
+18 |               target.scheme == url.scheme, target.host == url.host, target.port == url.port else {
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/WebKit.framework/Headers/WKNavigationDelegate.h:84:1: note: requirement 'webView(_:decidePolicyFor:decisionHandler:)' declared here
+ 82 |  @discussion If you do not implement this method, the web view will load the request or, if appropriate, forward it to another application.
+ 83 |  */
+ 84 | - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(WK_SWIFT_UI_ACTOR void (^)(WKNavigationActionPolicy))decisionHandler WK_SWIFT_ASYNC(3);
+    | `- note: requirement 'webView(_:decidePolicyFor:decisionHandler:)' declared here
+ 85 | 
+ 86 | /*! @abstract Decides whether to allow or cancel a navigation.
+SwiftCompile normal arm64 Compiling\ ApplicationWebView.swift /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Sources/ApplicationWebView.swift (in target 'TinyNative' from project 'TinyNative')
+
+SwiftCompile normal arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Sources/ApplicationWebView.swift (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-SwiftPerFileCompile ApplicationWebView.swift
+
+/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Sources/ApplicationWebView.swift:16:10: warning: instance method 'webView(_:decidePolicyFor:decisionHandler:)' nearly matches optional requirement 'webView(_:decidePolicyFor:decisionHandler:)' of protocol 'WKNavigationDelegate'
+14 |         if let url { webView.load(URLRequest(url: url)) }
+15 |     }
+16 |     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+   |          |- warning: instance method 'webView(_:decidePolicyFor:decisionHandler:)' nearly matches optional requirement 'webView(_:decidePolicyFor:decisionHandler:)' of protocol 'WKNavigationDelegate'
+   |          |- note: candidate has non-matching type '(WKWebView, WKNavigationAction, @escaping (WKNavigationActionPolicy) -> Void) -> ()'
+   |          |- note: move 'webView(_:decidePolicyFor:decisionHandler:)' to an extension to silence this warning
+   |          `- note: make 'webView(_:decidePolicyFor:decisionHandler:)' private to silence this warning
+17 |         guard let target = navigationAction.request.url, let url,
+18 |               target.scheme == url.scheme, target.host == url.host, target.port == url.port else {
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/System/Library/Frameworks/WebKit.framework/Headers/WKNavigationDelegate.h:84:1: note: requirement 'webView(_:decidePolicyFor:decisionHandler:)' declared here
+ 82 |  @discussion If you do not implement this method, the web view will load the request or, if appropriate, forward it to another application.
+ 83 |  */
+ 84 | - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(WK_SWIFT_UI_ACTOR void (^)(WKNavigationActionPolicy))decisionHandler WK_SWIFT_ASYNC(3);
+    | `- note: requirement 'webView(_:decidePolicyFor:decisionHandler:)' declared here
+ 85 | 
+ 86 | /*! @abstract Decides whether to allow or cancel a navigation.
+SwiftCompile normal arm64 Compiling\ Generated.swift /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Generated.swift (in target 'TinyNative' from project 'TinyNative')
+
+SwiftCompile normal arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Generated.swift (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-SwiftPerFileCompile Generated.swift
+
+SwiftCompile normal arm64 Compiling\ ApplicationView.swift /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Sources/ApplicationView.swift (in target 'TinyNative' from project 'TinyNative')
+
+SwiftCompile normal arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Sources/ApplicationView.swift (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-SwiftPerFileCompile ApplicationView.swift
+
+SwiftCompile normal arm64 Compiling\ Application.swift /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Sources/Application.swift (in target 'TinyNative' from project 'TinyNative')
+
+SwiftCompile normal arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Sources/Application.swift (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-SwiftPerFileCompile Application.swift
+
+SwiftCompile normal arm64 Compiling\ NativeHost.swift /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Sources/NativeHost.swift (in target 'TinyNative' from project 'TinyNative')
+
+SwiftCompile normal arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Sources/NativeHost.swift (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-SwiftPerFileCompile NativeHost.swift
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for TinyNative (in target 'TinyNative' from project 'TinyNative')
+
+SwiftDriver\ Compilation\ Requirements TinyNative normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TinyNative -Onone @/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.SwiftFileList -DDEBUG -Xcc -fmodule-map-file\=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/CSKGo.modulemap -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -target arm64-apple-macos14.0 -g -module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -F /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks -F /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -output-file-map /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex -sdk-module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative_const_extract_protocols.json -Xcc -iquote -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-generated-files.hmap -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-own-target-headers.hmap -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative-50d0b7fe970ce0c5bda72afda53dc88b-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-project-headers.hmap -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/CSKGo/include -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/include -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/DerivedSources-normal/arm64 -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/DerivedSources/arm64 -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative-Swift.h -import-objc-header /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Bridge.h -working-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos -experimental-emit-module-separately -disable-cmo
+
+SwiftMergeGeneratedHeaders /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/DerivedSources/TinyNative-Swift.h /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative-Swift.h (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-swiftHeaderTool -arch arm64 /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative-Swift.h -o /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/DerivedSources/TinyNative-Swift.h
+
+Copy /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.swiftmodule/arm64-apple-macos.swiftdoc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.swiftdoc (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.swiftdoc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.swiftmodule/arm64-apple-macos.swiftdoc
+
+Copy /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.swiftmodule/arm64-apple-macos.abi.json /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.abi.json (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.abi.json /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.swiftmodule/arm64-apple-macos.abi.json
+
+Copy /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.swiftmodule/arm64-apple-macos.swiftmodule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.swiftmodule (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.swiftmodule /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.swiftsourceinfo (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.swiftsourceinfo /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+SwiftDriverJobDiscovery normal arm64 Compiling Generated.swift (in target 'TinyNative' from project 'TinyNative')
+
+SwiftDriverJobDiscovery normal arm64 Compiling NativeHost.swift (in target 'TinyNative' from project 'TinyNative')
+
+SwiftDriverJobDiscovery normal arm64 Compiling Application.swift (in target 'TinyNative' from project 'TinyNative')
+
+SwiftDriverJobDiscovery normal arm64 Compiling ApplicationView.swift (in target 'TinyNative' from project 'TinyNative')
+
+SwiftDriverJobDiscovery normal arm64 Compiling ApplicationWebView.swift (in target 'TinyNative' from project 'TinyNative')
+
+SwiftDriver\ Compilation TinyNative normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TinyNative -Onone @/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.SwiftFileList -DDEBUG -Xcc -fmodule-map-file\=/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/GeneratedModuleMaps/CSKGo.modulemap -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -target arm64-apple-macos14.0 -g -module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -F /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks -F /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -c -j10 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKStatCaches.noindex/macosx27.0-26A425-7231f6df4def33e022ae2eb8f782df1a.sdkstatcache -output-file-map /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex -sdk-module-cache-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -emit-const-values -const-gather-protocols-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative_const_extract_protocols.json -Xcc -iquote -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-generated-files.hmap -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-own-target-headers.hmap -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-all-non-framework-target-headers.hmap -Xcc -ivfsoverlay -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative-50d0b7fe970ce0c5bda72afda53dc88b-VFS/all-product-headers.yaml -Xcc -iquote -Xcc /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-project-headers.hmap -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/swift/Sources/CSKGo/include -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/include -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/DerivedSources-normal/arm64 -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/DerivedSources/arm64 -Xcc -I/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative-Swift.h -import-objc-header /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/Bridge.h -working-directory /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos -experimental-emit-module-separately -disable-cmo
+
+Ld /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/MacOS/TinyNative.debug.dylib normal (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -O0 -Xlinker -no_warn_duplicate_libraries -L/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -F/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks -F/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -filelist /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.LinkFileList -install_name @rpath/TinyNative.debug.dylib -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @loader_path -Xlinker -rpath -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -object_path_lto -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.swiftmodule /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/skgo-host.a -lresolv -lskgo_native_core -L /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/core/zig-out/lib -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -o /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/MacOS/TinyNative.debug.dylib
+/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj: TinyNative: ld: warning: object file (/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/core/zig-out/lib/libskgo_native_core.a[2](compiler_rt.o)) was built for newer 'macOS' version (15.0) than being linked (14.0)
+/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/TinyNative.xcodeproj: TinyNative: ld: warning: object file (/private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/.sdk/core/zig-out/lib/libskgo_native_core.a[3](skgo_native_core_zcu.o)) was built for newer 'macOS' version (15.0) than being linked (14.0)
+
+ConstructStubExecutorLinkFileList /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-ExecutorLinkFileList-normal-arm64.txt (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    construct-stub-executor-link-file-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/MacOS/TinyNative.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'TinyNative' from project 'TinyNative')
+
+Ld /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/MacOS/TinyNative normal (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -O0 -Xlinker -no_warn_duplicate_libraries -L/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -F/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks -F/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @loader_path -Xlinker -rpath -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/PackageFrameworks -Xlinker -rpath -Xlinker @executable_path/../Frameworks -rdynamic -Xlinker -no_deduplicate -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative-ExecutorLinkFileList-normal-arm64.txt /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/MacOS/TinyNative.debug.dylib -o /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/MacOS/TinyNative
+
+CopySwiftLibs /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/MacOS/TinyNative.debug.dylib --scan-folder /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/Frameworks --scan-folder /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/PlugIns --scan-folder /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/Library/SystemExtensions --scan-folder /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/Extensions --platform macosx --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+Ignoring --strip-bitcode because --sign was not passed
+
+ExtractAppIntentsMetadata (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name TinyNative --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk --xcode-version 27A266a --platform-family macOS --deployment-target 14.0 --bundle-identifier dev.skgo.tiny-native --output /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/Resources --target-triple arm64-apple-macos14.0 --binary-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app/Contents/MacOS/TinyNative --dependency-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative_dependency_info.dat --stringsdata-file /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.SwiftFileList --metadata-file-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative.DependencyMetadataFileList --static-metadata-file-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/TinyNative.DependencyStaticMetadataFileList --swift-const-vals-list /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/TinyNative.build/Debug/TinyNative.build/Objects-normal/arm64/TinyNative.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --no-app-shortcuts-localization
+2026-11-11 20:59:58.568 appintentsmetadataprocessor[16362:36031136] Starting appintentsmetadataprocessor export
+2026-11-11 20:59:58.569 appintentsmetadataprocessor[16362:36031136] warning: Metadata extraction skipped, no AppIntents.framework dependency found
+
+RegisterExecutionPolicyException /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-RegisterExecutionPolicyException /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app
+
+Validate /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-validationUtility /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+Touch /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    /usr/bin/touch -c /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app
+
+RegisterWithLaunchServices /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app (in target 'TinyNative' from project 'TinyNative')
+    cd /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos
+    builtin-lsregisterurl --record-path /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/XCBuildData/registered-launchservices.txt -- /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products/Debug/TinyNative.app
+
+PruneExplicitPrecompiledModules /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+PruneExplicitPrecompiledModules /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/SDKExplicitPrecompiledModules
+
+PruneExplicitPrecompiledModules /var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+** BUILD SUCCEEDED **
+
+Native build products: /private/var/folders/lt/09rsy64x65s_0fp2b8zq3n7m0000gn/T/tmp.zcgYxK1sum/tiny-native/native/build/macos/DerivedData/Build/Products

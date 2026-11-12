@@ -1,7 +1,10 @@
 name: Native plugin release
 
-# Deliberately independent of pushes, the core version, and core qualification.
+# Core publication schedules a candidate. Only explicit qualification publishes it.
 on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
   workflow_dispatch:
     inputs:
       core_version:
@@ -9,74 +12,137 @@ on:
         required: true
         type: string
       plugin_version:
-        description: Independent native-shell release version (vX.Y.Z)
-        required: true
+        description: Independent native-shell version (blank reserves the next patch)
+        required: false
         type: string
   repository_dispatch:
     types: [native-plugin-qualified]
 
+# Serialize version reservations and publication; never replace an active request.
 concurrency:
-  group: native-plugin-release-${{ github.event.inputs.plugin_version || github.event.client_payload.plugin_version }}
+  group: native-plugin-release
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
 
 jobs:
-  candidate:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: skgo-managed-macos
-    timeout-minutes: 30
-    env:
-      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
-      GOMAXPROCS: '4'
-      GOFLAGS: -p=4
+  eligible:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    runs-on: skgo-managed-linux
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      build: ${{ steps.gate.outputs.build }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-go@v7
         with:
           go-version: stable
           cache: false
+      - name: Ignore successful core runner-only dry runs
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: go run ./cmd/skgo-native-release eligible
+
+  candidate:
+    needs: eligible
+    if: needs.eligible.outputs.build == 'true'
+    runs-on: skgo-managed-macos
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      actions: read
+    outputs:
+      published: ${{ steps.prepare.outputs.published }}
+    env:
+      MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+      GOMAXPROCS: '4'
+      GOFLAGS: -p=4
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          cache: false
+      - name: Resolve official core identity and reserve or reuse the candidate
+        id: prepare
+        env:
+          NATIVE_RELEASE_DISPATCH_REPOSITORY: ${{ secrets.NATIVE_RELEASE_DISPATCH_REPOSITORY }}
+          NATIVE_RELEASE_DISPATCH_TOKEN: ${{ secrets.NATIVE_RELEASE_DISPATCH_TOKEN }}
+        run: go run ./cmd/skgo-native-release prepare
       - uses: jdx/mise-action@v4
+        if: steps.prepare.outputs.reuse != 'true' && steps.prepare.outputs.published != 'true'
         with:
           working_directory: plugins/native-shell/sdk
           export_path: true
           cache: false
       - name: Native module, generated Swift, static SDK and shared-core regression tests
+        if: steps.prepare.outputs.reuse != 'true' && steps.prepare.outputs.published != 'true'
         run: go test -tags skgo_qualification -count=1 ./plugins/native-shell/... ./plugins/native-client/...
       - name: Fetch the official executable and build against its identity
-        id: candidate
+        if: steps.prepare.outputs.reuse != 'true' && steps.prepare.outputs.published != 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
-          CORE_VERSION: ${{ inputs.core_version }}
-          PLUGIN_VERSION: ${{ inputs.plugin_version }}
+          CORE_VERSION: ${{ steps.prepare.outputs.core_version }}
+          CORE_SOURCE_SHA: ${{ steps.prepare.outputs.core_source_sha }}
+          PLUGIN_VERSION: ${{ steps.prepare.outputs.plugin_version }}
         run: |
-          [[ "$CORE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          [[ "$PLUGIN_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           test "$(uname -m)" = arm64
           mkdir -p official candidate
           archive="skgo_${CORE_VERSION#v}_darwin_arm64.tar.gz"
           gh release download "$CORE_VERSION" --pattern "$archive" --pattern checksums.txt --dir official
-          (cd official && shasum -a 256 --check --ignore-missing checksums.txt)
+          expected=$(awk -v archive="$archive" '$2 == archive { print $1 }' official/checksums.txt)
+          test "${#expected}" = 64
+          echo "$expected  official/$archive" | shasum -a 256 --check
           tar -xzf "official/$archive" -C official
-          host=$(find "$PWD/official" -type f -name skgo | head -1)
+          host=$(find "$PWD/official" -type f -name skgo -print -quit)
           test -n "$host"
           "$host" buildinfo --json > official/buildinfo.json
           test "$(jq -r .skgoVersion official/buildinfo.json)" = "$CORE_VERSION"
           artifact="native-shell-${PLUGIN_VERSION}-skgo-${CORE_VERSION}-darwin-arm64.so"
           go run ./cmd/skgo-plugin-build --host "$host" --source plugins/native-shell --out "candidate/$artifact" --version-symbol main.SkgoVersion --plugin-version "$PLUGIN_VERSION"
-          (cd candidate && shasum -a 256 "$artifact" > checksums.txt)
-          echo "sha256=$(shasum -a 256 "candidate/$artifact" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "source_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          go run ./cmd/skgo-native-release record
       - uses: actions/upload-artifact@v7
+        if: steps.prepare.outputs.reuse != 'true' && steps.prepare.outputs.published != 'true'
         with:
-          name: native-shell-candidate
+          name: native-shell-candidate-${{ github.run_attempt }}
           path: candidate/*
           if-no-files-found: error
           retention-days: 30
 
+  notify:
+    needs: candidate
+    if: needs.candidate.outputs.published != 'true'
+    runs-on: skgo-managed-linux
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          cache: false
+      - name: Deliver the immutable candidate to configured qualification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NATIVE_RELEASE_DISPATCH_REPOSITORY: ${{ secrets.NATIVE_RELEASE_DISPATCH_REPOSITORY }}
+          NATIVE_RELEASE_DISPATCH_TOKEN: ${{ secrets.NATIVE_RELEASE_DISPATCH_TOKEN }}
+        run: go run ./cmd/skgo-native-release notify
+
   publish:
-    # Publish the requested candidate bytes without recompiling them.
     if: github.event_name == 'repository_dispatch'
     runs-on: skgo-managed-linux
     environment: release
@@ -85,56 +151,14 @@ jobs:
       contents: write
       actions: read
     steps:
-      - name: Validate the release request
-        id: authorized
-        env:
-          GH_TOKEN: ${{ github.token }}
-          CANDIDATE_RUN: ${{ github.event.client_payload.candidate_run }}
-          CANDIDATE_SHA256: ${{ github.event.client_payload.candidate_sha256 }}
-          PLUGIN_VERSION: ${{ github.event.client_payload.plugin_version }}
-          CORE_VERSION: ${{ github.event.client_payload.core_version }}
-          SOURCE_SHA: ${{ github.event.client_payload.source_sha }}
-        run: |
-          [[ "$CANDIDATE_RUN" =~ ^[0-9]+$ ]]
-          [[ "$CANDIDATE_SHA256" =~ ^[0-9a-f]{64}$ ]]
-          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
-          [[ "$PLUGIN_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          [[ "$CORE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          echo "artifact=native-shell-${PLUGIN_VERSION}-skgo-${CORE_VERSION}-darwin-arm64.so" >> "$GITHUB_OUTPUT"
-      - name: Validate the source candidate run
-        env:
-          GH_TOKEN: ${{ github.token }}
-          CANDIDATE_RUN: ${{ github.event.client_payload.candidate_run }}
-          SOURCE_SHA: ${{ github.event.client_payload.source_sha }}
-        run: |
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN" > candidate.json
-          jq -e --arg source "$SOURCE_SHA" '.conclusion == "success" and .path == ".github/workflows/native-plugin.yml" and .event == "workflow_dispatch" and .head_sha == $source' candidate.json
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          github-token: ${{ github.token }}
-          run-id: ${{ github.event.client_payload.candidate_run }}
-          name: native-shell-candidate
-          path: candidate
-      - name: Publish the requested bytes outside core's latest channel
+          go-version: stable
+          cache: false
+      - name: Verify qualification identity, publish original bytes and notify
         env:
           GH_TOKEN: ${{ github.token }}
-          ARTIFACT: ${{ steps.authorized.outputs.artifact }}
-          CANDIDATE_SHA256: ${{ github.event.client_payload.candidate_sha256 }}
-          PLUGIN_VERSION: ${{ github.event.client_payload.plugin_version }}
-          CORE_VERSION: ${{ github.event.client_payload.core_version }}
-          SOURCE_SHA: ${{ github.event.client_payload.source_sha }}
-        run: |
-          echo "$CANDIDATE_SHA256  candidate/$ARTIFACT" | sha256sum --check
-          (cd candidate && sha256sum --check checksums.txt)
-          tag="plugins/native-shell/$PLUGIN_VERSION"
-          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
-            echo "Native release tag already exists; release identities are immutable." >&2
-            exit 1
-          fi
-          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" --latest=false \
-            --title "native-shell $PLUGIN_VERSION for skgo $CORE_VERSION" \
-            --notes "Exact official host: skgo $CORE_VERSION, macOS ARM64. Source: $SOURCE_SHA." \
-            "candidate/$ARTIFACT" candidate/checksums.txt
-          mkdir downloaded
-          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "$ARTIFACT" --dir downloaded
-          echo "$CANDIDATE_SHA256  downloaded/$ARTIFACT" | sha256sum --check
+          NATIVE_RELEASE_DISPATCH_REPOSITORY: ${{ secrets.NATIVE_RELEASE_DISPATCH_REPOSITORY }}
+          NATIVE_RELEASE_DISPATCH_TOKEN: ${{ secrets.NATIVE_RELEASE_DISPATCH_TOKEN }}
+        run: go run ./cmd/skgo-native-release promote
