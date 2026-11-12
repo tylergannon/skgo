@@ -24,7 +24,7 @@ func TestGeneratedHostServesApplicationAndStopsOnParentEOF(t *testing.T) {
 	// The fixture owns only the application-handler seam; the executable and
 	// ready/lifetime protocol are the exact generated host source.
 	for name, text := range map[string]string{
-		"go.mod": "module example.test/application\n\ngo 1.27.3\n",
+		"go.mod": "module example.test/application\n\ngo 1.27.4\n",
 		"app.go": `package app
 import("io/fs"; "net/http")
 func NewHandler(fs.FS,string)(http.Handler,error){return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.Write([]byte("new application handler"))}),nil}`,

@@ -125,7 +125,7 @@ framework spans come from Node and need a Node provider preloaded outside
 `src/`. Do not add `src/instrumentation.server.*`: skgo's adapter does not
 declare instrumentation support, so Kit refuses it.
 
-Development currently requires exactly Go 1.27.2 on macOS ARM64 or Linux AMD64,
+Development currently requires exactly Go 1.27.4 on macOS ARM64 or Linux AMD64,
 Node `^22.18.0 || ^24.11.0 || >=26.0.0` and the project's VitePlus 1.3.0 environment. The Go host builds
 without cgo. Compatible Go edits update the host; changes classified as requiring
 a full rebuild replace it and may reset Go state. A compatible edit the native

@@ -38,7 +38,7 @@ func TestNativePluginBuildAndCLIApplication(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, "main.go"), fixture, 0644); err != nil {
 		t.Fatal(err)
 	}
-	mod := "module example.test/plugin\n\ngo 1.27.1\nrequire github.com/tylergannon/skgo v0.0.0\nreplace github.com/tylergannon/skgo => " + repo + "\n"
+	mod := "module example.test/plugin\n\ngo 1.27.4\nrequire github.com/tylergannon/skgo v0.0.0\nreplace github.com/tylergannon/skgo => " + repo + "\n"
 	if err := os.WriteFile(filepath.Join(source, "go.mod"), []byte(mod), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestNativePluginBuildAndCLIApplication(t *testing.T) {
 	if err := pluginbuild.Build(t.Context(), pluginbuild.Options{Host: skgoBinary(t), Source: source, Output: filepath.Join(plugins, "receipt.so"), SkgoSource: repo, VersionSymbol: "main.skgoVersion", Log: &log}); err != nil {
 		t.Fatalf("build native plugin: %v\n%s", err, &log)
 	}
-	if err := os.WriteFile(filepath.Join(project, "go.mod"), []byte("module example.test/consumer\ngo 1.27.1\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(project, "go.mod"), []byte("module example.test/consumer\ngo 1.27.4\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	cmd := exec.CommandContext(t.Context(), skgoBinary(t), "add", "--root", project, "--name", "MyApp", "--set", "text=literal receipt", "receipt")
@@ -97,7 +97,7 @@ func TestNewTemplateAppliesAfterBaseCreation(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(root, "web"), 0755); err != nil {
 			return newapp.Result{}, err
 		}
-		if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.test/field\ngo 1.27.1\n"), 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.test/field\ngo 1.27.4\n"), 0644); err != nil {
 			return newapp.Result{}, err
 		}
 		if err := templates.SaveIdentity(templateapi.Project{Root: root, Name: o.App}); err != nil {

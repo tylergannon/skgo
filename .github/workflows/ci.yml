@@ -34,7 +34,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-go@v7
         with:
-          go-version: stable
+          go-version-file: go.mod
           cache: false
           cache-dependency-path: |
             go.sum

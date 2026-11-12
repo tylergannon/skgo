@@ -23,8 +23,23 @@ type devRendererKey struct{}
 type devStreamingLoadKey struct{}
 type devParentKey struct{}
 
-// NativeDevelopment configures the application's explicit development constructor. Its configured Go registries and request middleware are
-// retained; Kit, rather than an embedded engine, supplies the page response.
+// NativeDevelopment configures the application's explicit development constructor.
+// Its configured Go registries and request middleware are retained; Kit, rather
+// than an embedded engine, supplies the page response.
+//
+// Each constructor call must return a separately owned handler. The development
+// host closes a returned io.Closer once after its HTTP calls and native bridge
+// work finish, including on rejection (also when both handler and error are
+// returned). If construction fails without returning an owner, the application
+// must clean up its partial construction itself.
+//
+// Reload does not isolate mutable package globals or discover resource aliases.
+// Applications must synchronize global mutation and keep an older generation's
+// resources valid while it runs. Cross-generation aliases and shared pools need
+// application-owned leases/reference counting; closing one handler must not
+// invalidate another. Work launched outside SKGo's request/bridge lifetimes must
+// be joined by the application's Close before it frees resources. Returning the
+// same closable owner for multiple generations does not transfer separate leases.
 type NativeDevelopment struct {
 	renderer     *SSR
 	manifest     Manifest

@@ -18,9 +18,12 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/tylergannon/skgo/internal/toolchain"
 )
 
 const module = "github.com/tylergannon/skgo"
+const releaseGoVersion = "go" + toolchain.Go
 
 var tagPattern = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
 
@@ -99,7 +102,7 @@ func build(tag, sha string) error {
 	// Build a released module, rather than a checkout reporting (devel). Isolate
 	// this module cache so a retry cannot pick up an earlier use of the same tag.
 	// Other dependencies use the normal proxy and sum database.
-	env := []string{"GOBIN=" + stage, "GOMODCACHE=" + filepath.Join(stage, "mod"), "GOPRIVATE=" + module, "CGO_ENABLED=1", "GOTOOLCHAIN=go1.27.3", "GOFLAGS=" + os.Getenv("GOFLAGS") + " -modcacherw"}
+	env := []string{"GOBIN=" + stage, "GOMODCACHE=" + filepath.Join(stage, "mod"), "GOPRIVATE=" + module, "CGO_ENABLED=1", "GOTOOLCHAIN=" + releaseGoVersion, "GOFLAGS=" + os.Getenv("GOFLAGS") + " -modcacherw"}
 	// The download response binds the module used by go install to the qualified
 	// commit, even if an administrator moved the candidate tag meanwhile.
 	data, err := output(env, "go", "mod", "download", "-json", module+"@"+tag)
@@ -124,8 +127,8 @@ func build(tag, sha string) error {
 	if err != nil {
 		return err
 	}
-	if info.Main.Path != module || info.Main.Version != tag || info.GoVersion != "go1.27.3" {
-		return fmt.Errorf("packaged CLI has unexpected module/toolchain identity: %v", info)
+	if err = verifyReleaseIdentity(info, tag); err != nil {
+		return err
 	}
 	if err = command(nil, binary, "buildinfo"); err != nil {
 		return err
@@ -147,6 +150,13 @@ func build(tag, sha string) error {
 	}
 	return writeArchive(filepath.Join("dist", archiveName(tag, runtime.GOOS+"_"+runtime.GOARCH)), map[string]string{"skgo": binary, "LICENSE": "LICENSE", "README.md": "README.md"})
 }
+func verifyReleaseIdentity(info *buildinfo.BuildInfo, tag string) error {
+	if info.Main.Path != module || info.Main.Version != tag || info.GoVersion != releaseGoVersion {
+		return fmt.Errorf("packaged CLI has unexpected module/toolchain identity: %v", info)
+	}
+	return nil
+}
+
 func writeArchive(path string, files map[string]string) (err error) {
 	f, err := os.Create(path)
 	if err != nil {
