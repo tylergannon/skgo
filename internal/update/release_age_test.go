@@ -171,7 +171,7 @@ func TestPublicUpdatePassesSelectedAdapterToGuard(t *testing.T) {
 			bin := filepath.Join(t.TempDir(), "bin")
 			host := filepath.Join(bin, "skgo")
 			writeAlignmentFile(t, root, "go.mod", "module example.com/age-update\n\ngo 1.27.1\nrequire github.com/tylergannon/skgo v0.27.0\n")
-			writeAlignmentFile(t, root, "web/package.json", `{"private":true,"devDependencies":{"vite-plus":"1.3.0","@skgo/sveltekit-adapter":"0.22.1"},"scripts":{"receipt":"echo keep"}}`)
+			writeAlignmentFile(t, root, "web/package.json", `{"private":true,"devDependencies":{"vite-plus":"1.6.0","@skgo/sveltekit-adapter":"0.22.1"},"scripts":{"receipt":"echo keep"}}`)
 			writeAlignmentFile(t, root, "web/pnpm-workspace.yaml", "allowBuilds:\n  esbuild: true\n")
 			before, err := frontendFiles(root)
 			if err != nil {
@@ -203,7 +203,7 @@ func TestPublicUpdatePassesSelectedAdapterToGuard(t *testing.T) {
 					cmd.Env = append(os.Environ(), c.Env...)
 					return cmd.Output()
 				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"--version"}):
-					return []byte("vp v1.3.0\n"), nil
+					return []byte("vp v1.6.0\n"), nil
 				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"toolchain", "--global", "--json", "vite", "vitest"}):
 					return []byte(qualifiedVPGraph), nil
 				case c.Name == "/qualified/vp" && slices.Equal(c.Args, []string{"env", "exec", "--package-manager", "pnpm@12.14.0", "/qualified/vp", "install", "--no-frozen-lockfile"}):

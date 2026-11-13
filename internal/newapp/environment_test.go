@@ -14,11 +14,11 @@ import (
 
 func TestCreationUsesQualifiedVPEnvironment(t *testing.T) {
 	for _, tc := range []struct{ vp, pnpm, wantError string }{
-		{"v0.3.3", "12.14.0", "requires qualified VitePlus 1.3.0"},
-		{"v1.3.0-beta.1", "12.14.0", "requires qualified VitePlus 1.3.0"},
-		{"v1.3.1", "12.14.0", "requires qualified VitePlus 1.3.0"},
-		{"v1.3.0", "12.10.1", "vp environment requires pnpm 12.14.0"},
-		{"v1.3.0", "12.14.0", ""},
+		{"v0.3.3", "12.14.0", "requires qualified VitePlus 1.6.0"},
+		{"v1.3.0-beta.1", "12.14.0", "requires qualified VitePlus 1.6.0"},
+		{"v1.3.1", "12.14.0", "requires qualified VitePlus 1.6.0"},
+		{"v1.6.0", "12.10.1", "vp environment requires pnpm 12.14.0"},
+		{"v1.6.0", "12.14.0", ""},
 	} {
 		t.Run(tc.vp+"-"+tc.pnpm, func(t *testing.T) {
 			root := t.TempDir()
