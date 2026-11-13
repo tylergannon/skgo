@@ -11,10 +11,10 @@ Evidence inspected:
 
 ## Findings
 
-### Issue — the generated-app add-on still rejects the newly qualified VitePlus
+### Issue — public and package setup guidance now tells users to install versions skgo rejects
 
-The active repair correctly moves the authoritative toolchain pin to VitePlus `1.6.0` (`internal/toolchain/pins.go:30`) and the example to the matching core. But `internal/sv/sv-addon.source.js:253-254` continues to throw whenever the installed VitePlus version is not `1.3.0`; its later Storybook compatibility conditional and exception remain keyed to `1.3.0` at lines 296-303. `skgo new` checks the user environment against `toolchain.VitePlus` (`internal/newapp/environment.go:43-45`) before invoking this add-on, so a correctly-qualified `vp 1.6.0` project proceeds to `sv add` and is then rejected by skgo itself.
+The corrected runtime requires VitePlus `1.6.0` (`internal/toolchain/pins.go:30`; the runtime gate is `internal/newapp/environment.go:43-45`) and the release now targets Kit `3.2.0` (`internal/toolchain/pins.go:16`). But the user-facing root `README.md:8,22` still says the release targets Kit `3.1.1` and requires VitePlus `1.3.0`. Likewise, the published add-on package guidance in `internal/sv/README.md:14` and adapter guidance in `internal/adapter/README.md:42` still name the old Kit queue correction.
 
-This is a generated-consumer regression caused by the update: qualify and adopt the 1.6.0 add-on behavior (including its Storybook policy), regenerate `sv-addon.js`, and prove `skgo new`/the generated consumer. If that compatibility cannot be established, retain the prior qualified VitePlus instead of advertising 1.6.0.
+Following the root README's VitePlus installation requirement makes `skgo new` fail before creating a project, because its documented 1.3.0 is explicitly rejected by the current 1.6.0 environment gate. Update the non-`docs/` setup/package guidance with the adopted release values. `docs/index.html` contains the same obsolete public requirements, but repository instructions prohibit writing under `docs/` without separate permission; preserve that boundary and obtain the required authorization for it rather than silently changing it.
 
 Outcome: material findings remain.
