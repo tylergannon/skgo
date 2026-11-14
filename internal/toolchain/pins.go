@@ -13,10 +13,10 @@
 package toolchain
 
 // Kit is the @sveltejs/kit version skgo mirrors and patches.
-const Kit = "3.1.1"
+const Kit = "3.2.0"
 
 // Svelte is the svelte version the example application and new applications use.
-const Svelte = "5.57.2"
+const Svelte = "5.57.3"
 
 // Go is the Go release the module declares and native development requires.
 const Go = "1.27.4"
@@ -27,7 +27,7 @@ const Go = "1.27.4"
 const Node = "^22.18.0 || ^24.11.0 || >=26.0.0"
 
 // VitePlus is the qualified vp release.
-const VitePlus = "1.3.0"
+const VitePlus = "1.6.0"
 
 // PNPM is the package manager vp resolves for this release.
 const PNPM = "12.14.0"

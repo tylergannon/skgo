@@ -5,7 +5,7 @@ API routes in Go beside your Svelte components. SKGo generates the TypeScript
 types and bindings. In production, SvelteKit's renderer runs inside the Go
 process, and your application ships as one binary with no Node runtime or cgo.
 
-**Pre-1.0**, targeting SvelteKit 3.1.1. Application server logic is Go;
+**Pre-1.0**, targeting SvelteKit 3.2.0. Application server logic is Go;
 components and universal loads remain ordinary SvelteKit.
 
 ## Get started
@@ -19,7 +19,7 @@ brew install --cask tylergannon/skgo/skgo
 Linux AMD64 and ARM64 binaries and checksums are available from
 [GitHub Releases](https://github.com/tylergannon/skgo/releases).
 
-Development requires Go **1.27.4**, [VitePlus](https://viteplus.dev) **1.3.0**,
+Development requires Go **1.27.4**, [VitePlus](https://viteplus.dev) **1.6.0**,
 Node `^22.18.0 || ^24.11.0 || >=26.0.0`, and [just](https://just.systems).
 The development server supports macOS ARM64 and Linux AMD64.
 

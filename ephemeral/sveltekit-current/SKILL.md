@@ -7,7 +7,7 @@ description: Map SvelteKit 3 behavior from skgo's pinned Kit source before chang
 
 Treat Kit as the specification. Before changing a mirrored feature, read its
 implementation in the installed `example/web/node_modules/@sveltejs/kit`
-package, verified as version `3.1.1` against the frozen lockfile. Each worktree
+package, verified as version `3.2.0` against the frozen lockfile. Each worktree
 installs its own pinned package; do not depend on another checkout's ignored
 reference directory. Use the official GitHub release for the target tag to
 identify migrations since the prior pin.
@@ -80,3 +80,11 @@ pathname cannot load another origin's code; service-worker env injection keeps
 sourcemaps; server-only remote modules in `server` directories report a
 dedicated build error. The declared-Inputs queue source is byte-identical to
 3.1.0 and the same correction is qualified against 3.1.1.
+
+Verified 3.2.0 changes: the development server logs clickable remote-function
+invocations; `resolve` rejects URL inputs; missing-route data requests answer
+JSON; relative data-request paths follow the page URL with `paths.relative`;
+malformed empty-offset binary remote forms answer 400; and route/params are
+present in hydration's `afterNavigate`. Its postbuild queue source is byte-for-byte
+unchanged from 3.1.1, so the existing bounded declared-Inputs correction remains
+applicable under 3.2.0's distinct exact patch identity.

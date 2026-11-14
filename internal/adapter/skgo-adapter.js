@@ -576,7 +576,19 @@ function componentSource(file, dir) {
 	}
 	const map = resolve(dir, entry) + '.map';
 	const sources = JSON.parse(readFileSync(map, 'utf-8')).sources;
-	const own = resolve(dirname(map), sources[sources.length - 1]);
+	// Rolldown can legitimately emit an empty sourcemap for a component whose
+	// compiled output is only its source location comment. Kit still writes that
+	// comment in the entry, so retain the same source-of-truth rather than
+	// guessing from its generated filename.
+	const commented = readFileSync(resolve(dir, entry), 'utf-8').match(/^\/\/ (src\/.*\.(?:svelte))$/m)?.[1];
+	const own = sources?.length
+		? resolve(dirname(map), sources[sources.length - 1])
+		: commented
+			? resolve(process.cwd(), commented)
+			: undefined;
+	if (!own) {
+		throw new Error(`skgo: ${map} has no component source and ${entry} has no source location comment`);
+	}
 	const name = basename(own);
 	const authored = /^\+(page|layout|error)\.svelte$/.test(name);
 	const fallback = /^(layout|error)\.svelte$/.test(name) && own === join(KIT_COMPONENTS, name);

@@ -276,19 +276,19 @@ func TestApplyFrontendRemovesTheEarlierOwnedKitPatch(t *testing.T) {
 	write(root, "patches/mine.patch", "authored patch")
 	write(root, "src/page.svelte", "<h1>My edited application</h1>")
 	write(root, "package.json", `{"name":"app","devDependencies":{"@sveltejs/kit":"3.1.0"}}`)
-	write(stage, "patches/skgo-kit-3.1.1-queue.patch", "current correction")
+	write(stage, "patches/skgo-kit-3.2.0-queue.patch", "current correction")
 	write(stage, "patches/mine.patch", "authored patch")
 	write(stage, "src/page.svelte", "<h1>My edited application</h1>")
-	write(stage, "package.json", `{"name":"app","devDependencies":{"@sveltejs/kit":"3.1.1"}}`)
+	write(stage, "package.json", `{"name":"app","devDependencies":{"@sveltejs/kit":"3.2.0"}}`)
 	if err := applyFrontend(root, stage); err != nil {
 		t.Fatal(err)
 	}
 	for name, want := range map[string]string{
-		"patches/skgo-kit-3.1.1-queue.patch": "current correction",
+		"patches/skgo-kit-3.2.0-queue.patch": "current correction",
 		"patches/skgo-kit-3.0.0-queue.patch": "the application's own fix",
 		"patches/mine.patch":                 "authored patch",
 		"src/page.svelte":                    "<h1>My edited application</h1>",
-		"package.json":                       `{"name":"app","devDependencies":{"@sveltejs/kit":"3.1.1"}}`,
+		"package.json":                       `{"name":"app","devDependencies":{"@sveltejs/kit":"3.2.0"}}`,
 	} {
 		b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(name)))
 		if err != nil || string(b) != want {

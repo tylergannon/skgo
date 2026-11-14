@@ -16,9 +16,9 @@ func TestDevelopmentEnforcesDeclaredKitPin(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ pin, installed string }{
-		{"3.1.1", "3.1.0"},
+		{"3.2.0", "3.1.0"},
 		// Changing only the package's peer declaration must change the gate.
-		{"3.1.2", "3.1.1"},
+		{"3.1.2", "3.2.0"},
 	} {
 		t.Run(tc.pin+"-rejects-"+tc.installed, func(t *testing.T) {
 			app := t.TempDir()
@@ -31,7 +31,7 @@ func TestDevelopmentEnforcesDeclaredKitPin(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if tc.pin != "3.1.1" {
+			if tc.pin != "3.2.0" {
 				var pkg map[string]any
 				if err := json.Unmarshal(body, &pkg); err != nil {
 					t.Fatal(err)
