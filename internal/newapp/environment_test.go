@@ -14,11 +14,32 @@ import (
 
 func TestCreationUsesQualifiedVPEnvironment(t *testing.T) {
 	for _, tc := range []struct{ vp, pnpm, wantError string }{
-		{"v0.3.3", "12.14.0", "requires qualified VitePlus 1.6.0"},
-		{"v1.3.0-beta.1", "12.14.0", "requires qualified VitePlus 1.6.0"},
-		{"v1.3.1", "12.14.0", "requires qualified VitePlus 1.6.0"},
-		{"v1.6.0", "12.10.1", "vp environment requires pnpm 12.14.0"},
-		{"v1.6.0", "12.14.0", ""},
+		{"vp v0.3.3", "12.14.0", "requires VitePlus 1.6.0 or newer"},
+		{"vp v1.4.0", "12.14.0", "requires VitePlus 1.6.0 or newer"},
+		{"vp v1.5.99", "12.14.0", "requires VitePlus 1.6.0 or newer"},
+		{"vp v1.6.0-beta.1", "12.14.0", "requires VitePlus 1.6.0 or newer"},
+		{"vp v1.6.0", "12.10.1", "vp environment requires pnpm 12.14.0"},
+		{"vp v1.10.0", "12.10.1", "vp environment requires pnpm 12.14.0"},
+		{"vp v1.6.0", "12.14.0", ""},
+		{"vp v1.6.0+build.42", "12.14.0", ""},
+		{"vp v1.6.1", "12.14.0", ""},
+		{"vp v1.7.0", "12.14.0", ""},
+		{"vp v1.10.0", "12.14.0", ""},
+		{"vp v2.0.0", "12.14.0", ""},
+		{"vp v1.7.0-beta.1", "12.14.0", ""},
+		{"", "12.14.0", "reported malformed output"},
+		{"vp", "12.14.0", "reported malformed output"},
+		{"vite-plus v1.6.0", "12.14.0", "reported malformed output"},
+		{"vp 1.6.0", "12.14.0", "reported malformed output"},
+		{"vp v1", "12.14.0", "reported malformed output"},
+		{"vp v1.6", "12.14.0", "reported malformed output"},
+		{"vp v1.06.0", "12.14.0", "reported malformed output"},
+		{"vp v1.6.0.1", "12.14.0", "reported malformed output"},
+		{"vp v1.6.0-beta.01", "12.14.0", "reported malformed output"},
+		{"vp v1.6.0+", "12.14.0", "reported malformed output"},
+		{"vp vlatest", "12.14.0", "reported malformed output"},
+		{"vp v1.6.0 unexpected", "12.14.0", "reported malformed output"},
+		{"vp\nv1.6.0", "12.14.0", "reported malformed output"},
 	} {
 		t.Run(tc.vp+"-"+tc.pnpm, func(t *testing.T) {
 			root := t.TempDir()
@@ -32,7 +53,7 @@ func TestCreationUsesQualifiedVPEnvironment(t *testing.T) {
 			}
 			vp := filepath.Join(bin, "vp")
 			script := `#!/bin/sh
-if [ "$1" = --version ]; then printf 'vp %s\nLocal vite-plus:\n' "$FIXTURE_VP_VERSION"; exit 0; fi
+if [ "$1" = --version ]; then printf '%s\n\nLocal vite-plus:\n  vite-plus  0.0.1\n' "$FIXTURE_VP_VERSION"; exit 0; fi
 if [ "$1" = create ]; then
  if [ -n "$FIXTURE_BOOTSTRAP_RECEIPT" ]; then cat package.json > "$FIXTURE_BOOTSTRAP_RECEIPT" || exit 48; fi
  printf 'created with %s' "$(pnpm --version)"
@@ -96,6 +117,9 @@ exec "$@"
 			if tc.wantError != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.wantError) {
 					t.Fatalf("error = %v; want %s", err, tc.wantError)
+				}
+				if !strings.Contains(tc.wantError, "pnpm") && (!strings.Contains(err.Error(), vp) || !strings.Contains(err.Error(), "--version reported")) {
+					t.Fatalf("version diagnostic must identify the executable and its output: %v", err)
 				}
 				if run != nil || kitVP != "" || out.Len() != 0 {
 					t.Fatal("unqualified environment became usable")

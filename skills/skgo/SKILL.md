@@ -11,7 +11,8 @@ frontend contract; Go owns all server behavior and the production process.
 ## Frontend tooling
 
 **VitePlus (`vp`) owns the frontend tool environment.** SKGO declares the
-supported pins; `vp` resolves and runs the corresponding package manager. Use
+supported pins and a minimum VitePlus version; `vp` resolves and runs the
+corresponding package manager. Use
 `vp install`, `vp build`, `vp run`, `vp exec` and `vp dlx` from the project
 containing those declarations. Do not invoke ambient `pnpm`, install or select
 its version manually, use mise to select pnpm, or tell developers to reconcile
@@ -126,7 +127,7 @@ framework spans come from Node and need a Node provider preloaded outside
 declare instrumentation support, so Kit refuses it.
 
 Development currently requires exactly Go 1.27.4 on macOS ARM64 or Linux AMD64,
-Node `^22.18.0 || ^24.11.0 || >=26.0.0` and the project's VitePlus 1.3.0 environment. The Go host builds
+Node `^22.18.0 || ^24.11.0 || >=26.0.0` and VitePlus 1.6.0 or newer. The Go host builds
 without cgo. Compatible Go edits update the host; changes classified as requiring
 a full rebuild replace it and may reset Go state. A compatible edit the native
 loader rejects with an error, such as a relocation failure, takes the same

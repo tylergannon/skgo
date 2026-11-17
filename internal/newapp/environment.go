@@ -6,11 +6,17 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
 	"github.com/tylergannon/skgo/internal/toolchain"
+	"golang.org/x/mod/semver"
 )
+
+// semver also accepts abbreviated Go module versions (v1 and v1.6), but vp
+// reports a complete semantic version.
+var completeVersion = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+]|$)`)
 
 // qualifiedRunner keeps every creation step in the environment owned by the
 // qualified vp, including nested package-manager invocations from Go generators.
@@ -39,10 +45,13 @@ func qualifiedRunner(vp, dir string, stdout, stderr io.Writer) (func(command) er
 	if err != nil {
 		return nil, "", fmt.Errorf("checking VitePlus version: %w", err)
 	}
-	fields := strings.Fields(string(output))
-	if len(fields) < 2 || fields[0] != "vp" || fields[1] != "v"+toolchain.VitePlus {
-		firstLine := strings.SplitN(strings.TrimSpace(string(output)), "\n", 2)[0]
-		return nil, "", fmt.Errorf("project creation requires qualified VitePlus %s; %s --version reported %q. Install that version before running skgo new", toolchain.VitePlus, vp, firstLine)
+	firstLine := strings.SplitN(strings.TrimSpace(string(output)), "\n", 2)[0]
+	fields := strings.Fields(firstLine)
+	if len(fields) != 2 || fields[0] != "vp" || !completeVersion.MatchString(fields[1]) || !semver.IsValid(fields[1]) {
+		return nil, "", fmt.Errorf("checking VitePlus version: %s --version reported malformed output %q; expected vp v<major>.<minor>.<patch>", vp, firstLine)
+	}
+	if semver.Compare(fields[1], "v"+toolchain.VitePlus) < 0 {
+		return nil, "", fmt.Errorf("project creation requires VitePlus %s or newer; %s --version reported %q. Upgrade VitePlus before running skgo new", toolchain.VitePlus, vp, firstLine)
 	}
 	managed := []string{"env", "exec", "--package-manager", "pnpm@" + toolchain.PNPM}
 	output, err = probe(append(managed, "which", "pnpm")...)

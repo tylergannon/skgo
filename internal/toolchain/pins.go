@@ -26,7 +26,7 @@ const Go = "1.27.4"
 // own floor, so it is the range a developer must satisfy.
 const Node = "^22.18.0 || ^24.11.0 || >=26.0.0"
 
-// VitePlus is the qualified vp release.
+// VitePlus is the minimum supported vp release and the example's frontend pin.
 const VitePlus = "1.6.0"
 
 // PNPM is the package manager vp resolves for this release.
