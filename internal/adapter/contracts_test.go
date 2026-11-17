@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -23,10 +24,16 @@ func runAdapterScript(t *testing.T, module, program string, env []string, args .
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
-	argv := append([]string{"exec", "node", "--input-type=module", "-e", program, path}, args...)
-	command := exec.CommandContext(ctx, filepath.Join(web, "node_modules/.bin/vp"), argv...)
+	// just test enters vp's environment before invoking Go. Run its selected
+	// Node directly so cancellation reaches the owner, rather than a vp wrapper.
+	argv := append([]string{"--input-type=module", "-e", program, path}, args...)
+	command := exec.CommandContext(ctx, "node", argv...)
 	command.Dir = web
 	command.Env = append(os.Environ(), env...)
+	if runtime.GOOS != "windows" {
+		command.Cancel = func() error { return command.Process.Signal(os.Interrupt) }
+	}
+	command.WaitDelay = 2 * time.Second
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("adapter contract: %v\n%s", err, output)
 	}
