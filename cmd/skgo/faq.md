@@ -8,7 +8,7 @@ order: 1020
 
 ## Why can't I choose a package manager?
 
-SKGo qualifies one VitePlus release with one pnpm, and runs every frontend command through `vp`, which resolves that pnpm itself. `skgo new` refuses `sv create`'s `--install` and `--no-install` because VitePlus does the install, and `@skgo/sv` refuses to run under any other VitePlus. Install VitePlus at the pinned version and do not select pnpm yourself.
+SKGo qualifies one VitePlus release with one pnpm, and runs every frontend command through `vp`, which resolves that pnpm itself. `skgo new` refuses `sv create`'s `--install` and `--no-install` because VitePlus does the install. `skgo new` and `@skgo/sv` accept VitePlus at or above the supported version using semantic version ordering. Install VitePlus 1.6.0 or newer and let it resolve pnpm.
 
 ## Why does `skgo new` refuse some sv options?
 

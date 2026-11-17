@@ -1,0 +1,11 @@
+# VitePlus minimum version
+
+correction: `skgo new` must accept the supported VitePlus version as a semantic minimum, preserving vp ownership of package-manager resolution. The exact gate caused Mission Control to bypass scaffolding and omit frontend embedding; Mission Control repair is outside this task.
+doc_bug: The SKGo skill still required VitePlus 1.3.0 and CLI guidance demanded the exact pin; align active setup guidance with the minimum policy.
+decision: The npm latest tag and `vp upgrade --check` both report 1.6.0. Repository pins already match; upgrade the user's global vp from 1.4.0 to 1.6.0 without changing pnpm ownership.
+decision: The native sv add-on independently repeated the exact VitePlus gate; its semantic minimum and Storybook peer allowance must follow the installed version too. Bundle node-semver in the shipped add-on so it stays self-contained.
+friction: Creating qualification apps beneath the repository first inherited go.work, then the ignored .local ancestor excluded all formatter inputs. Use an independent temporary directory for real scaffolding; do not work around the generator.
+friction: `just test` needed the existing example/mise.toml trusted. Its CLI subprocesses then stalled before Go startup; a macOS sample showed only `_dyld_start`. A four-day-old unrelated buildinfo process was already stuck the same way. Record the broad-suite limitation separately from focused tests; do not change product behavior to mask host loader stalls.
+doc_bug: docs/index.html still claims exact VitePlus 1.3.0 and tells users to install it. Do not modify this snapshot without permission under AGENTS.md; active Markdown guide sources now describe the minimum.
+doc_bug: A real default scaffold's `go tool skgo check` reports existing Staticcheck S1021 at generated server.go:50 and missing project Prettier/prettier-plugin-svelte. Project creation's own checks, frontend build, and standalone build succeeded; the extra checker is not clean.
+friction: The broad suite also failed TestPrerenderOwnerCompilesOncePublishesAndDrainsOnEveryFailure with a service-startup timeout; its cause was not established. The two CLI startup hangs were terminated after over five minutes. Other packages completed, but the full suite is not a pass.

@@ -17,7 +17,7 @@ order: 3020
 - replaces sv's `demo` template, a JavaScript server application, with SKGo's examples starter, keeping what other add-ons put in the layout
 - pins Vitest to the version VitePlus ships and routes the `test` script through `vp`
 
-It refuses any VitePlus other than the one this SKGo release pins. `skgo new`, not the add-on, configures the [Kit patch](/docs/cli/kit-patch) and installs dependencies.
+It requires VitePlus 1.6.0 or newer, using semantic version ordering. `skgo new`, not the add-on, configures the [Kit patch](/docs/cli/kit-patch) and installs dependencies.
 
 ## Add-ons that fit
 

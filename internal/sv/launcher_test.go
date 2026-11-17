@@ -9,7 +9,7 @@ import (
 
 // Load the shipped bundle unchanged and run its bundled sv-utils transforms
 // against fixture files. Only sv's registration surface is doubled here.
-func TestPlaywrightLauncherServesTheGoBinaryAndPreservesAuthoredConfig(t *testing.T) {
+func TestNativeAddonAcceptsSupportedVitePlusAndPreservesGoLaunchers(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatalf("node is required to load the published native add-on: %v", err)
@@ -36,6 +36,7 @@ func TestPlaywrightLauncherServesTheGoBinaryAndPreservesAuthoredConfig(t *testin
 	}
 	for file, body := range map[string]string{
 		"package.json":         `{"name":"fixture","scripts":{},"devDependencies":{}}`,
+		"pnpm-workspace.yaml":  "{}\n",
 		".gitignore":           "\n/build\n",
 		"vite.config.ts":       `import { defineConfig } from 'vite'; export default defineConfig({ plugins: [] });`,
 		"playwright.config.ts": `import { defineConfig } from "@playwright/test"; export default defineConfig({ webServer: { command: "npm run build && npm run preview", port: 4173, timeout: 60000 }, testMatch: "**/*.e2e.{ts,js}", reporter: "json" });`,
@@ -55,7 +56,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = process.cwd();
 const addon = (await import(pathToFileURL(path.join(root, 'sv-addon.js')))).default;
-const files = new Set(['package.json','.gitignore','vite.config.ts','playwright.config.ts']);
+const files = new Set(['package.json','pnpm-workspace.yaml','.gitignore','vite.config.ts','playwright.config.ts']);
 const sv = {
   devDependency() {},
   file(name, transform) {
@@ -81,6 +82,31 @@ assert.match(config, /reporter:\s*["']json["']/);
 const before = new Map([...files].map(name => [name, fs.readFileSync(path.join(root,'web',name),'utf8')]));
 apply();
 for (const [name, body] of before) assert.equal(fs.readFileSync(path.join(root,'web',name),'utf8'), body, name + ' changed on a second add');
+const vpDir = path.join(root, 'web/node_modules/vite-plus');
+fs.mkdirSync(vpDir, { recursive: true });
+for (const [version, error] of [
+  ['1.6.0', null], ['1.6.0+build.42', null], ['1.6.1', null],
+  ['1.7.0', null], ['1.10.0', null], ['2.0.0', null], ['1.7.0-beta.1', null],
+  ['1.4.0', /requires VitePlus 1\.6\.0 or newer/],
+  ['1.5.99', /requires VitePlus 1\.6\.0 or newer/],
+  ['1.6.0-beta.1', /requires VitePlus 1\.6\.0 or newer/],
+  ['garbage', /malformed VitePlus version/], ['1.6', /malformed VitePlus version/],
+  ['1.06.0', /malformed VitePlus version/], ['1.6.0-beta.01', /malformed VitePlus version/]
+]) {
+  fs.writeFileSync(path.join(vpDir, 'package.json'), JSON.stringify({ version, dependencies: { vitest: '5.0.6' } }));
+  if (error) {
+    assert.throws(apply, error, version);
+  } else {
+    fs.writeFileSync(path.join(root, 'web/package.json'), JSON.stringify({ scripts: {}, devDependencies: { vitest: '5.0.5', '@vitest/browser': '5.0.5' } }));
+    assert.doesNotThrow(apply, version);
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'web/package.json'), 'utf8'));
+    assert.equal(pkg.devDependencies.vitest, '5.0.6');
+    assert.equal(pkg.devDependencies['@vitest/browser'], '5.0.6');
+    const policy = fs.readFileSync(path.join(root, 'web/pnpm-workspace.yaml'), 'utf8');
+    assert.ok(policy.includes(version), 'Storybook peer policy must allow installed VitePlus ' + version);
+  }
+}
+fs.rmSync(vpDir, { recursive: true });
 function rejectUnchanged(source, expected) {
   const configPath = path.join(root,'web/playwright.config.ts');
   fs.writeFileSync(configPath, source);
